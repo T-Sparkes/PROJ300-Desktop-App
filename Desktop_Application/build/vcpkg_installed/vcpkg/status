@@ -1,0 +1,58 @@
+Package: vcpkg-cmake-config
+Version: 2024-05-23
+Architecture: x64-windows
+Multi-Arch: same
+Abi: 1c5260bf3772368d3aa8edf760005b1d5dc701409c58705eea7ee464aa01269e
+Status: install ok installed
+
+Package: vcpkg-cmake
+Version: 2024-04-23
+Architecture: x64-windows
+Multi-Arch: same
+Abi: 13ddbdb112ca1d327733b01a2e765720a258728427ef3dcc892c0104c3dc13d6
+Status: install ok installed
+
+Package: eigen3
+Version: 3.4.0
+Port-Version: 5
+Depends: vcpkg-cmake, vcpkg-cmake-config
+Architecture: x64-windows
+Multi-Arch: same
+Abi: c167bd90d37c9d34a283f1f191c219a0b0ebffc26969da819f80f9087634d3f1
+Description: C++ template library for linear algebra: matrices, vectors, numerical solvers, and related algorithms.
+Status: install ok installed
+
+Package: imgui
+Version: 1.91.7
+Depends: vcpkg-cmake, vcpkg-cmake-config
+Architecture: x64-windows
+Multi-Arch: same
+Abi: 715645288d51726035679d2f143c80887fb1aa502d82dfe999fec4633ed9a25b
+Description: Bloat-free Immediate Mode Graphical User interface for C++ with minimal dependencies.
+Status: install ok installed
+
+Package: imgui
+Feature: docking-experimental
+Architecture: x64-windows
+Multi-Arch: same
+Description: Build with docking support
+Status: install ok installed
+
+Package: implot
+Version: 0.16
+Depends: imgui, vcpkg-cmake, vcpkg-cmake-config
+Architecture: x64-windows
+Multi-Arch: same
+Abi: 5aad1da35048020f63a2a0d9e31efb8fdd8e1af76989037708400db3db7076fe
+Description: Advanced 2D Plotting for Dear ImGui
+Status: install ok installed
+
+Package: sdl3
+Version: 3.2.0
+Depends: vcpkg-cmake, vcpkg-cmake-config
+Architecture: x64-windows
+Multi-Arch: same
+Abi: 7d5d0fc8a33cec439215b7636b63bd94c51e7197d82c2fe20505171b8a3cf7f7
+Description: Simple DirectMedia Layer is a cross-platform development library designed to provide low level access to audio, keyboard, mouse, joystick, and graphics hardware via OpenGL and Direct3D.
+Status: install ok installed
+

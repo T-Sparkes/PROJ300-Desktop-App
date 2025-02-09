@@ -1,0 +1,10 @@
+^C:\GITHUB\PROJ300\DESKTOP_APPLICATION\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/GitHub/PROJ300/Desktop_Application -BC:/GitHub/PROJ300/Desktop_Application/build --check-stamp-file C:/GitHub/PROJ300/Desktop_Application/build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
