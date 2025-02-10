@@ -5,7 +5,7 @@ int main(int argc, char const *argv[])
 {
     bool quit = false;
     SDL_Event event;
-    RendererBackend rendererBackend;
+    RendererBackend rendererBackend(1920, 1080);
     ViewPort viewPort(&rendererBackend);
 
     while (!quit)

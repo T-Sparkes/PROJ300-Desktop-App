@@ -1,6 +1,7 @@
+
 #include "RendererBackend.hpp"
 
-RendererBackend::RendererBackend()
+RendererBackend::RendererBackend(unsigned int windowSizeX = DEFAULT_WINDOW_SIZE_X, unsigned int windowSizeY = DEFAULT_WINDOW_SIZE_X)
 {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -12,7 +13,9 @@ RendererBackend::RendererBackend()
     Io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
     SDL_Init(SDL_INIT_VIDEO);
-    if (!SDL_CreateWindowAndRenderer(nullptr, DEFAULT_WINDOW_SIZE_X, DEFAULT_WINDOW_SIZE_Y, SDL_WINDOW_RESIZABLE, &m_Window, &m_sdlRenderer))
+    if (!SDL_CreateWindowAndRenderer(nullptr, 
+        windowSizeX, windowSizeY, SDL_WINDOW_RESIZABLE, 
+        &m_Window, &m_sdlRenderer))
     {
         SDL_Log("%S", SDL_GetError());
     }
@@ -82,4 +85,19 @@ RendererBackend::~RendererBackend()
     SDL_DestroyRenderer(m_sdlRenderer);
     SDL_DestroyWindow(m_Window);
     SDL_Quit();
+}
+
+SDL_Texture* RendererBackend::LoadTexture(std::string path)
+{
+    std::string sfilePath = SDL_GetBasePath();
+
+    SDL_Surface* tempSerface = SDL_LoadBMP((sfilePath + path).c_str());
+    if (tempSerface == NULL) SDL_Log("Could not load surface: %s\n", SDL_GetError());
+
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(m_sdlRenderer, tempSerface);
+    if (texture == NULL) SDL_Log("Could not load texture: %s\n", SDL_GetError());
+
+    SDL_DestroySurface(tempSerface);
+
+    return texture;
 }
