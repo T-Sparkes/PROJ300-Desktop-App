@@ -1,3 +1,0 @@
-C:/GitHub/PROJ300/Desktop_Application/build/CMakeFiles/Desktop_Application.dir
-C:/GitHub/PROJ300/Desktop_Application/build/CMakeFiles/ALL_BUILD.dir
-C:/GitHub/PROJ300/Desktop_Application/build/CMakeFiles/ZERO_CHECK.dir
