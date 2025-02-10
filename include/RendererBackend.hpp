@@ -36,9 +36,10 @@ public:
     void StartFrame();
     void EndFrame();
     void ProcessEvent(SDL_Event* event);
+    SDL_Renderer* GetSdlRenderer();
     ~RendererBackend();
 
-protected:
+private:
     SDL_Window* m_Window = nullptr; 
     SDL_Renderer* m_sdlRenderer = nullptr;
     float m_DpiScale;

@@ -67,6 +67,11 @@ void RendererBackend::ProcessEvent(SDL_Event* event)
     }
 }
 
+SDL_Renderer *RendererBackend::GetSdlRenderer()
+{
+    return m_sdlRenderer;
+}
+
 RendererBackend::~RendererBackend()
 {
     ImGui_ImplSDLRenderer3_Shutdown();

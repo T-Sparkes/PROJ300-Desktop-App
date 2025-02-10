@@ -1,10 +1,12 @@
 #include "RendererBackend.hpp"
+#include "ViewPort.hpp"
 
 int main(int argc, char const *argv[])
 {
     bool quit = false;
     SDL_Event event;
     RendererBackend rendererBackend;
+    ViewPort viewPort(&rendererBackend);
 
     while (!quit)
     {
@@ -16,7 +18,10 @@ int main(int argc, char const *argv[])
         }
 
         rendererBackend.StartFrame();
+
         ImGui::ShowDemoWindow();
+        viewPort.RenderViewport();
+        
         rendererBackend.EndFrame();
     }
     
