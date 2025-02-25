@@ -58,8 +58,6 @@ void ViewPort::RenderViewport()
     SDL_SetRenderDrawColor(m_rendererBackend->GetSdlRenderer(), DARK_GREY, 255);
     SDL_RenderClear(m_rendererBackend->GetSdlRenderer());   // Render stuff after this
 
-    RenderTexture(circleTexture, {0, 0}, {1, 1}, 0.0, 255, 0, 0, SDL_ALPHA_OPAQUE);
-
     for (auto renderable : m_Renderables)
     {
         renderable->render();

@@ -25,6 +25,8 @@ public:
 
     SDL_Texture* circleTexture = nullptr;
     SDL_Texture* robotTexture = nullptr;
+    inline SDL_Renderer* GetSdlRenderer() { return m_rendererBackend->GetSdlRenderer(); }
+    inline Camera2D& GetCamera() { return m_camera; }
 
 private:
     RendererBackend* m_rendererBackend;
