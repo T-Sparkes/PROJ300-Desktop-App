@@ -4,7 +4,7 @@
 
 class ViewPortRenderable
 {
-private:
+protected:
 ViewPort* m_targetViewPort;    
 
 public:

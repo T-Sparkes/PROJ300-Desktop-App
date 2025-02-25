@@ -1,5 +1,6 @@
 #include "RendererBackend.hpp"
 #include "ViewPort.hpp"
+#include "testRenderable.hpp"
 
 int main(int argc, char const *argv[])
 {
@@ -7,6 +8,7 @@ int main(int argc, char const *argv[])
     SDL_Event event;
     RendererBackend rendererBackend(1920, 1080);
     ViewPort viewPort(&rendererBackend);
+    //testRenderable testRenderable(&viewPort);
 
     while (!quit)
     {
@@ -21,7 +23,6 @@ int main(int argc, char const *argv[])
 
         ImGui::ShowDemoWindow();
         viewPort.RenderViewport();
-        
         rendererBackend.EndFrame();
     }
     

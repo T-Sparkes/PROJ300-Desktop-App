@@ -4,6 +4,7 @@
 #include "SDL3/SDL.h"
 #include "imgui.h"
 #include "RendererBackend.hpp"
+#include "Camera2D.hpp"
 
 #define SDL_VIEWPORT "##sdl_viewport"
 
@@ -19,9 +20,15 @@ public:
     void ViewPortBegin();
     void ViewPortEnd();
     void RenderViewport();
+    void RenderTexture(SDL_Texture *texture, Eigen::Vector2d pos, Eigen::Vector2d size, double angle, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+    SDL_Texture *LoadTexture(std::string path);
+
+    SDL_Texture* circleTexture = nullptr;
+    SDL_Texture* robotTexture = nullptr;
 
 private:
     RendererBackend* m_rendererBackend;
     SDL_Texture* m_renderTexture;
     std::vector<ViewPortRenderable*> m_Renderables;
+    Camera2D m_camera;
 };

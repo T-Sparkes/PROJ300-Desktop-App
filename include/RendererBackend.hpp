@@ -38,7 +38,6 @@ public:
     void EndFrame();
     void ProcessEvent(SDL_Event* event);
     SDL_Renderer* GetSdlRenderer();
-    SDL_Texture* LoadTexture(std::string path);
 
 private:
     SDL_Window* m_Window = nullptr; 
