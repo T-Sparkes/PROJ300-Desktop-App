@@ -8,7 +8,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-ViewPort::ViewPort(RendererBackend* rendererBackend) : m_rendererBackend(rendererBackend), m_camera({0, 0}, {0, 0}, 100)
+ViewPort::ViewPort() : m_camera({0, 0}, {0, 0}, 100), m_rendererBackend(RendererBackend::GetInstance())
 {
     circleTexture = LoadTexture("textures\\circle.bmp");
     robotTexture = LoadTexture("textures\\robot.bmp");
@@ -51,19 +51,19 @@ void ViewPort::RenderViewport()
     ViewPortBegin();
 
     ImVec2 textureSize = ImGui::GetContentRegionAvail();
-    m_renderTexture = SDL_CreateTexture(m_rendererBackend->GetSdlRenderer(), SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_TARGET, (int)textureSize.x, (int)textureSize.y);
+    m_renderTexture = SDL_CreateTexture(m_rendererBackend.GetSdlRenderer(), SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_TARGET, (int)textureSize.x, (int)textureSize.y);
     m_camera.setScreenSize({textureSize.x, textureSize.y});
 
-    SDL_SetRenderTarget(m_rendererBackend->GetSdlRenderer(), m_renderTexture);
-    SDL_SetRenderDrawColor(m_rendererBackend->GetSdlRenderer(), DARK_GREY, 255);
-    SDL_RenderClear(m_rendererBackend->GetSdlRenderer());   // Render stuff after this
+    SDL_SetRenderTarget(m_rendererBackend.GetSdlRenderer(), m_renderTexture);
+    SDL_SetRenderDrawColor(m_rendererBackend.GetSdlRenderer(), DARK_GREY, 255);
+    SDL_RenderClear(m_rendererBackend.GetSdlRenderer());   // Render stuff after this
 
     for (auto renderable : m_Renderables)
     {
         renderable->render();
     }
 
-    SDL_SetRenderTarget(m_rendererBackend->GetSdlRenderer(), nullptr);  // And before this
+    SDL_SetRenderTarget(m_rendererBackend.GetSdlRenderer(), nullptr);  // And before this
     ImTextureID textureID = (ImTextureID)m_renderTexture; // Cast SDL_Texture* to ImTextureID
     ImGui::Image(textureID, textureSize, ImVec2(0, 0), ImVec2(1, 1));
 
@@ -86,7 +86,7 @@ void ViewPort::RenderTexture( SDL_Texture* texture, Eigen::Vector2d pos, Eigen::
 
     SDL_SetTextureColorMod(texture, r, g, b);  //Set the colour of the texture
     SDL_SetTextureAlphaMod(texture, a);  //Set the alpha of the texture
-    SDL_RenderTextureRotated(m_rendererBackend->GetSdlRenderer(), texture, NULL, &destRect, ((angle + m_camera.rotation) * (180.0 / M_PI)), NULL, SDL_FLIP_NONE);
+    SDL_RenderTextureRotated(m_rendererBackend.GetSdlRenderer(), texture, NULL, &destRect, ((angle + m_camera.rotation) * (180.0 / M_PI)), NULL, SDL_FLIP_NONE);
 }
 
 SDL_Texture* ViewPort::LoadTexture(std::string path)
@@ -96,7 +96,7 @@ SDL_Texture* ViewPort::LoadTexture(std::string path)
     SDL_Surface* tempSerface = SDL_LoadBMP((sfilePath + path).c_str());
     if (tempSerface == NULL) SDL_Log("Could not load surface: %s\n", SDL_GetError());
 
-    SDL_Texture* texture = SDL_CreateTextureFromSurface(m_rendererBackend->GetSdlRenderer(), tempSerface);
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(m_rendererBackend.GetSdlRenderer(), tempSerface);
     if (texture == NULL) SDL_Log("Could not load texture: %s\n", SDL_GetError());
 
     SDL_DestroySurface(tempSerface);

@@ -13,7 +13,7 @@ class ViewPortRenderable;
 class ViewPort
 {
 public:
-    ViewPort(RendererBackend* rendererBackend);
+    ViewPort();
     ~ViewPort();
     void AddRenderable(ViewPortRenderable *renderable);
     void RemoveRenderable(ViewPortRenderable *renderable);
@@ -25,11 +25,11 @@ public:
 
     SDL_Texture* circleTexture = nullptr;
     SDL_Texture* robotTexture = nullptr;
-    inline SDL_Renderer* GetSdlRenderer() { return m_rendererBackend->GetSdlRenderer(); }
+    inline SDL_Renderer* GetSdlRenderer() { return m_rendererBackend.GetSdlRenderer(); }
     inline Camera2D& GetCamera() { return m_camera; }
 
 private:
-    RendererBackend* m_rendererBackend;
+    RendererBackend& m_rendererBackend;
     SDL_Texture* m_renderTexture;
     std::vector<ViewPortRenderable*> m_Renderables;
     Camera2D m_camera;

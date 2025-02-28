@@ -1,7 +1,6 @@
-
 #include "RendererBackend.hpp"
 
-RendererBackend::RendererBackend(unsigned int windowSizeX = DEFAULT_WINDOW_SIZE_X, unsigned int windowSizeY = DEFAULT_WINDOW_SIZE_X)
+RendererBackend::RendererBackend(unsigned int windowSizeX, unsigned int windowSizeY)
 {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();

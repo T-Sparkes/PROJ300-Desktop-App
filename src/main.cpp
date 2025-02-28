@@ -1,34 +1,13 @@
-#include "RendererBackend.hpp"
-#include "ViewPort.hpp"
-#include "testRenderable.hpp"
-#include "WorldGrid.hpp"
+#include "Application.hpp"
 
 int main(int argc, char const *argv[])
 {
-    bool quit = false;
-    SDL_Event event;
-    RendererBackend rendererBackend(1920, 1080);
-    ViewPort viewPort(&rendererBackend);
+    appState_t returnState = INIT;
 
-    GridRenderer worldGrid(&viewPort, {0, 0}, {10, 10});
-    testRenderable testRenderable(&viewPort);
-
-    while (!quit)
+    while(returnState != QUIT)
     {
-        while (SDL_PollEvent(&event) != 0)
-        {
-            if (event.type == SDL_EVENT_QUIT) quit = true;
-            ImGui_ImplSDL3_ProcessEvent(&event);
-            rendererBackend.ProcessEvent(&event);
-        }
-
-        rendererBackend.StartFrame();
-
-        ImGui::ShowDemoWindow();
-        viewPort.RenderViewport();
-        
-        rendererBackend.EndFrame();
+        Application testApp;
+        returnState = testApp.Run();
     }
-    
     return 0;
 }
