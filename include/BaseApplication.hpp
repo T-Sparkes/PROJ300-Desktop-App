@@ -24,12 +24,12 @@ public:
 
 protected:
     appState_t appState = INIT;
-    ViewPort viewPort;
+    ViewPort& viewPort;
 
     virtual void Update() = 0;
     virtual void OnEvent(SDL_Event* event) = 0;
 
-    BaseApplication::BaseApplication() : m_RendererBackend(RendererBackend::GetInstance()), viewPort()
+    BaseApplication::BaseApplication() : m_RendererBackend(RendererBackend::GetInstance()), viewPort(ViewPort::GetInstance())
     {
         ImGuiIO& Io = ImGui::GetIO();
         Io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls

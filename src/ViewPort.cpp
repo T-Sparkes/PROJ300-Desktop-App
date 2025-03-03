@@ -8,6 +8,12 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+ViewPort& ViewPort::GetInstance()
+{
+    static ViewPort instance;
+    return instance;
+}
+
 ViewPort::ViewPort() : m_camera({0, 0}, {0, 0}, 100), m_rendererBackend(RendererBackend::GetInstance())
 {
     circleTexture = LoadTexture("textures\\circle.bmp");

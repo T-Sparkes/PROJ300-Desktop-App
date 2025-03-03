@@ -13,7 +13,7 @@ class ViewPortRenderable;
 class ViewPort
 {
 public:
-    ViewPort();
+    static ViewPort &GetInstance();
     ~ViewPort();
     void AddRenderable(ViewPortRenderable *renderable);
     void RemoveRenderable(ViewPortRenderable *renderable);
@@ -29,8 +29,11 @@ public:
     inline Camera2D& GetCamera() { return m_camera; }
 
 private:
+    ViewPort();
     RendererBackend& m_rendererBackend;
     SDL_Texture* m_renderTexture;
     std::vector<ViewPortRenderable*> m_Renderables;
     Camera2D m_camera;
 };
+
+

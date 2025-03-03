@@ -14,9 +14,10 @@ public:
     void ViewPortWindow();
 
     GridRenderer worldGrid;
+    GridRenderer worldGridSmall;
 };
 
-Application::Application() : worldGrid(&viewPort, {0, 0}, {10, 10})
+Application::Application() : worldGrid({0, 0}, {10, 10})
 {
     worldGrid.gridStep = 1;
     worldGrid.bRender = true;

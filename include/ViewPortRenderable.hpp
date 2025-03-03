@@ -4,19 +4,15 @@
 
 class ViewPortRenderable
 {
-protected:
-ViewPort* m_targetViewPort;    
-
 public:
-    ViewPortRenderable(ViewPort* targetViewPort)
+    ViewPortRenderable()
     {
-        m_targetViewPort = targetViewPort;
-        m_targetViewPort->AddRenderable(this);
+        ViewPort::GetInstance().AddRenderable(this);
     }
 
     ~ViewPortRenderable()
     {
-        m_targetViewPort->RemoveRenderable(this);
+        ViewPort::GetInstance().RemoveRenderable(this);
     }
 
     virtual void render() = 0;
