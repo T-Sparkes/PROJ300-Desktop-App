@@ -1,8 +1,15 @@
+#pragma once
 #include "BaseApplication.hpp"
 #include "WorldGrid.hpp"
 #include "Buffer.hpp"
+#include "SerialInterface.hpp"
 
 #define FPS_BUFFER_SIZE 500
+
+#define SERIAL_LINE_SIZE_BYTES 64
+#define SERIAL_HISTORY_SIZE_LINES 100
+#define DEFAULT_PORT "COM7"
+#define DEFAULT_BAUDRATE 115200
 
 class Application : public BaseApplication
 {
@@ -17,10 +24,13 @@ public:
     void fpsWindow();
     void ConfigWindow();
 
+    void SerialMonitor();
+
 private:
     double averageFps;
 
     GridRenderer worldGrid;
     Buffer<ImPlotPoint> fpsBuffer;
+    SerialInterface serial;
 };
 

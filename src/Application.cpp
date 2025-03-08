@@ -28,6 +28,7 @@ void Application::Update()
     GraphWindow();
     ConfigWindow();
     ViewPortWindow();
+    SerialMonitor();
 }
 
 void Application::ViewPortWindow()
@@ -107,5 +108,48 @@ void Application::ConfigWindow()
 
     }
 
+    ImGui::End();
+}
+
+void Application::SerialMonitor()
+{
+    static SerialPacket rxPacket;
+    static char portBuff[8] = DEFAULT_PORT;
+    static int baudInput = DEFAULT_BAUDRATE;
+
+    static std::vector<std::string> historyBuffer;
+
+    ImGui::Begin("Serial Console");
+
+    ImGui::InputText("Port", portBuff, sizeof(portBuff));
+    ImGui::InputInt("BaudRate", &baudInput, 0, 0);
+
+    if (ImGui::Button("Connect")) serial.OpenPort(portBuff, baudInput);
+    ImGui::SameLine();
+    if (ImGui::Button("Disconnect")) serial.ClosePort();
+
+    if (serial.getPacket(&rxPacket))
+    {
+        static char lineBuffer[SERIAL_LINE_SIZE_BYTES];
+        sprintf_s(lineBuffer, sizeof(lineBuffer), "PACKET: 0x%02X | 0x%04X | 0x%04X | %s\n", rxPacket.header, rxPacket.data1, rxPacket.data2, rxPacket.message);
+        historyBuffer.push_back(lineBuffer);
+    }
+
+    ImGui::BeginChild("Console");
+    {
+        if (historyBuffer.size() > SERIAL_HISTORY_SIZE_LINES)
+        {
+            historyBuffer.erase(historyBuffer.begin());
+        }
+
+        for (auto line : historyBuffer)
+        {
+            ImGui::TextWrapped("%s", line.c_str());
+        }
+
+        ImGui::SetScrollHereY(0.0f);
+    }
+    
+    ImGui::EndChild();
     ImGui::End();
 }
