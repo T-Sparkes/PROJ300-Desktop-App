@@ -1,7 +1,8 @@
 #include "BaseApplication.hpp"
 #include "WorldGrid.hpp"
-#include "InfoBar.hpp"
 #include "Buffer.hpp"
+
+#define FPS_BUFFER_SIZE 500
 
 class Application : public BaseApplication
 {
@@ -12,10 +13,14 @@ public:
     void Update() override;
 
     void ViewPortWindow();
+    void GraphWindow();
+    void fpsWindow();
+    void ConfigWindow();
 
 private:
+    double averageFps;
+
     GridRenderer worldGrid;
-    InfoBar infoBar;
     Buffer<ImPlotPoint> fpsBuffer;
 };
 
