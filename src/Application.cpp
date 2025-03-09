@@ -17,6 +17,11 @@ void Application::OnEvent(SDL_Event* event)
     {
         appState = RESTART;
     }
+
+    if (ImGui::IsKeyDown(ImGuiKey_Escape))
+    {
+        appState = QUIT;
+    }
 }   
 
 void Application::Update()
@@ -29,6 +34,16 @@ void Application::Update()
     ConfigWindow();
     ViewPortWindow();
     SerialMonitor();
+    MotorTestWindow();
+}
+
+void Application::MotorTestWindow()
+{
+    ImGui::Begin("Motor DEBUG");
+    static float motorSpeed = 0.0f;
+    ImGui::SliderFloat("Motor Speed", &motorSpeed, 0.0f, 7.0f);
+    serial.SetCommandVel(motorSpeed, motorSpeed);
+    ImGui::End();
 }
 
 void Application::ViewPortWindow()
@@ -113,7 +128,7 @@ void Application::ConfigWindow()
 
 void Application::SerialMonitor()
 {
-    static SerialPacket rxPacket;
+    static EncoderDataPacket rxPacket;
     static char portBuff[8] = DEFAULT_PORT;
     static int baudInput = DEFAULT_BAUDRATE;
 
@@ -131,7 +146,7 @@ void Application::SerialMonitor()
     if (serial.getPacket(&rxPacket))
     {
         static char lineBuffer[SERIAL_LINE_SIZE_BYTES];
-        sprintf_s(lineBuffer, sizeof(lineBuffer), "PACKET: 0x%02X | 0x%04X | 0x%04X | %s\n", rxPacket.header, rxPacket.data1, rxPacket.data2, rxPacket.message);
+        sprintf_s(lineBuffer, sizeof(lineBuffer), "PACKET: 0x%02X | %f | %f | %f | %f |\n", rxPacket.header, rxPacket.encA, rxPacket.encB, rxPacket.velA, rxPacket.velB);
         historyBuffer.push_back(lineBuffer);
     }
 
