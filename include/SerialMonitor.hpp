@@ -8,9 +8,11 @@
 
 class SerialMonitor
 {
-private:
+public:
     EncoderDataPacket EncPacket;
     AnchorRangePacket AncPacket;
+    StatusPacket statPacket;
+
     char portBuff[8] = DEFAULT_PORT;
     int baudInput = DEFAULT_BAUDRATE;
     std::vector<std::string> historyBuffer; // This is gross, i might fix it later
@@ -65,6 +67,13 @@ public:
                 sprintf_s(lineBuffer, sizeof(lineBuffer), "PACKET: 0x%02X | 0x%02X | %c | %f |\n", AncPacket.header, AncPacket.packetID, AncPacket.anchorID, AncPacket.range);
                 historyBuffer.push_back(lineBuffer);
             }
+
+            //if (serialCom->getPacket(&statPacket))
+            //{
+            //    static char lineBuffer[SERIAL_LINE_SIZE_BYTES];
+            //    sprintf_s(lineBuffer, sizeof(lineBuffer), "PACKET: 0x%02X | 0x%02X | %d |\n", statPacket.header, statPacket.packetID, statPacket.connected);
+            //    historyBuffer.push_back(lineBuffer);
+            //}
 
             if (historyBuffer.size() > SERIAL_HISTORY_SIZE_LINES)
             {

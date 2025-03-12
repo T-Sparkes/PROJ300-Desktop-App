@@ -1,5 +1,9 @@
 
 #include "Application.hpp"
+#include <Eigen/Dense>
+#include <algorithm>
+
+Eigen::Vector2d wheelVelFromGoal(double x, double y, double theta, double targetX, double targetY); 
 
 Application::Application() : m_WorldGrid({0, 0}, {10, 10}), m_FpsBuffer(FPS_BUFFER_SIZE)
 {
@@ -29,6 +33,14 @@ void Application::Update()
     ImGuiIO& io = ImGui::GetIO();
     m_FpsBuffer.addData({(double)SDL_GetTicks() / 1000.0, io.Framerate});
 
+    EncoderDataPacket encoderData = m_SerialMonitor->EncPacket;
+    odom.update(encoderData.encA, encoderData.encB);
+
+    Eigen::Vector2d mousePosWorld = viewPort.GetCamera().transform.inverse() * GetViewPortMousePos();
+    Eigen::Vector2d wheelVels = wheelVelFromGoal(odom.getState().x(), odom.getState().y(), odom.getState().z(), mousePosWorld.x(), mousePosWorld.y());
+
+    m_SerialComm.SetCommandVel((float)wheelVels.x(), (float)wheelVels.y());
+
     fpsWindow();
     GraphWindow();
     ConfigWindow();
@@ -47,7 +59,7 @@ void Application::MotorTestWindow()
     ImGui::SliderFloat("Motor Speed A", &motorSpeedA, 0.0f, 7.0f);
     ImGui::SliderFloat("Motor Speed B", &motorSpeedB, 0.0f, 7.0f);
 
-    m_SerialComm.SetCommandVel(motorSpeedA, motorSpeedB);
+    //m_SerialComm.SetCommandVel(motorSpeedA, motorSpeedB);
     ImGui::End();
 }
 
@@ -98,12 +110,35 @@ void Application::fpsWindow()
     ImGui::Begin("##FPS");
     { 
         ImGui::Text("FPS: %d ", (int)m_AverageFps);
+
         ImGui::SameLine(); 
         ImGui::Text("| Camera Pos: %f, %f ", viewPort.GetCamera().getPosition().x(), viewPort.GetCamera().getPosition().y());
+
         ImGui::SameLine();
         ImGui::Text("| Camera Scale: %d", viewPort.GetCamera().getScale());
+
         ImGui::SameLine();
         ImGui::Text("| Mouse World Pos: %f, %f ", mousePosWorld.x(), mousePosWorld.y());
+
+        ImGui::SameLine();
+        ImGui::Text("| Robot Connetion Status: ");
+
+        ImGui::SameLine();
+        static StatusPacket status;
+        m_SerialComm.getPacket(&status);
+
+        if (status.connected)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 255, 0, 255));
+            ImGui::Text("Connected");
+            ImGui::PopStyleColor();
+        }
+        else
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(255, 0, 0, 255));
+            ImGui::Text("No Connection");
+            ImGui::PopStyleColor();
+        }        
     }
     ImGui::End();
 }
@@ -135,4 +170,27 @@ void Application::ConfigWindow()
         }
     }
     ImGui::End();
+}
+
+Eigen::Vector2d wheelVelFromGoal(double x, double y, double theta, double targetX, double targetY) 
+{
+
+    const double width = 0.173; 
+
+    double targetTheta = atan2(targetY - y, targetX - x);
+    double error = targetTheta - theta;
+
+    while (error > M_PI) error -= 2 * M_PI;
+    while (error < -M_PI) error += 2 * M_PI;
+
+    double omega = 1.0 * error;
+
+    double vForwards = 0.05;  
+    double vL = vForwards - (width / 2.0) * omega;
+    double vR = vForwards + (width / 2.0) * omega;
+
+    double omegaL = vL / 0.03;
+    double omegaR = vR / 0.03;
+
+    return {omegaL, omegaR}; 
 }

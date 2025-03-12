@@ -4,6 +4,7 @@
 #include "Buffer.hpp"
 #include "SerialInterface.hpp"
 #include "SerialMonitor.hpp"
+#include "DiffDriveOdom.hpp"
 
 #define FPS_BUFFER_SIZE 500
 
@@ -21,6 +22,7 @@ private:
     Buffer<ImPlotPoint> m_FpsBuffer;
     SerialInterface m_SerialComm;
     SerialMonitor* m_SerialMonitor;
+    DiffDriveOdom odom;
 
     void MotorTestWindow();
     void ViewPortWindow();

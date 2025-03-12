@@ -8,13 +8,14 @@
 #include <atomic>
 #include <functional>
 
+#define PACKET_ACK 0x01
 #define PACKET_HEADER 0xAA55
+#define PACKET_SIZE 32
+
 #define ENCODER_PACKET_ID 0x01
 #define COMMAND_PACKET_ID 0x02
 #define RANGE_PACKET_ID 0x03
-#define PACKET_ACK 0x01
-
-#define PACKET_SIZE 32
+#define STATUS_PACKET_ID 0x04
 
 #pragma pack(push, 1)
 struct GenericPacket // This is a test packet.
@@ -56,6 +57,15 @@ struct AnchorRangePacket
 };
 #pragma pack(pop)
 
+#pragma pack(push, 1)
+struct StatusPacket
+{
+    uint16_t header;
+    uint8_t packetID;
+    bool connected = false;
+};
+#pragma pack(pop)
+
 // Packets to implement:
 // Robot command packet to send
 // Robot odometry packet to receive
@@ -76,10 +86,12 @@ private:
     volatile bool m_EncoderDataReady = false;
     volatile bool m_RangeDataReady = false;
     volatile bool m_NewCommandPacket = false;
+    volatile bool m_StatusDataReady = false;
 
     EncoderDataPacket m_LatestEncoderPacket;
     AnchorRangePacket m_LatestAnchorPacket;
     RobotCommandPacket m_LatestCommandPacket;
+    StatusPacket m_LatestStatusPacket;
    
     void m_ReadPacket();
     void m_SerialTask();
@@ -92,5 +104,6 @@ public:
     void SetCommandVel(float velA, float velB);
     bool getPacket(EncoderDataPacket *packet);
     bool getPacket(AnchorRangePacket *packet);
+    bool getPacket(StatusPacket *packet);
     void PrintRawPacket(uint8_t *bytes, size_t numBytes);
 };

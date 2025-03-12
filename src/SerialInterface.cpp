@@ -58,6 +58,8 @@ void SerialInterface::m_ReadPacket()
         int bytesRead = m_SerialPort.readBytes((uint8_t*)(rxBuffer), sizeof(rxBuffer));
         memcpy(&rxPacket, rxBuffer, sizeof(rxPacket));
 
+        //PrintRawPacket(rxBuffer, PACKET_SIZE);
+
         if (rxPacket.header == PACKET_HEADER && rxPacket.packetID == ENCODER_PACKET_ID) // Encoder packet
         {
             m_SerialPort.writeChar(PACKET_ACK);
@@ -72,6 +74,14 @@ void SerialInterface::m_ReadPacket()
             std::lock_guard<std::mutex> lock(m_Mutex);
             memcpy(&m_LatestAnchorPacket, rxBuffer, sizeof(m_LatestAnchorPacket));
             m_RangeDataReady = true;
+        }
+
+        else if (rxPacket.header == PACKET_HEADER && rxPacket.packetID == STATUS_PACKET_ID) // Encoder packet
+        {
+            m_SerialPort.writeChar(PACKET_ACK);
+            std::lock_guard<std::mutex> lock(m_Mutex);
+            memcpy(&m_LatestStatusPacket, rxBuffer, sizeof(m_LatestStatusPacket));
+            m_StatusDataReady = true;
         }
 
         else 
@@ -132,6 +142,18 @@ bool SerialInterface::getPacket(AnchorRangePacket* packet)
     {
         *packet = m_LatestAnchorPacket;
         m_RangeDataReady = false;
+        return true;
+    }
+    else return false;
+}
+
+bool SerialInterface::getPacket(StatusPacket* packet)
+{
+    std::lock_guard<std::mutex> lock(m_Mutex);
+    *packet = m_LatestStatusPacket;
+    if(m_StatusDataReady)
+    {
+        m_StatusDataReady = false;
         return true;
     }
     else return false;
