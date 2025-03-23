@@ -2,8 +2,8 @@
 #include <SDL3/SDL.h>
 #include <Eigen/Dense>
 
-#include "ViewPort.hpp"
-#include "ViewPortRenderable.hpp"
+#include "Core/ViewPort.hpp"
+#include "Core/ViewPortRenderable.hpp"
 
 class GridRenderer : public ViewPortRenderable
 {

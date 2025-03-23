@@ -11,14 +11,25 @@ set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
 set(THIRD_PARTY_DIR ${CMAKE_SOURCE_DIR}/thirdparty)
 
 # Add all .cpp files from the src and thirdparty directories
-file(GLOB SOURCES ${SOURCE_DIR}/*.cpp ${THIRD_PARTY_DIR}/*.cpp)
+file(GLOB_RECURSE SOURCES ${SOURCE_DIR}/*.cpp ${THIRD_PARTY_DIR}/*.cpp)
 
 # Create the main executable
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 # Add include directories for the target
-target_include_directories(${PROJECT_NAME} PRIVATE ${INCLUDE_DIR} ${THIRD_PARTY_DIR})
-target_link_directories(${PROJECT_NAME} PRIVATE ${INCLUDE_DIR} ${THIRD_PARTY_DIR})
+target_include_directories(${PROJECT_NAME} PRIVATE 
+    ${INCLUDE_DIR} 
+    ${THIRD_PARTY_DIR}
+    ${INCLUDE_DIR}/UI  # Add this if you have a UI subfolder
+    ${INCLUDE_DIR}/Core 
+)
+
+target_link_directories(${PROJECT_NAME} PRIVATE 
+    ${SOURCE_DIR} 
+    ${THIRD_PARTY_DIR}
+    ${SOURCE_DIR}/UI
+    ${SOURCE_DIR}/Core  
+)
 
 # Link SDL3
 find_package(SDL3 CONFIG REQUIRED) 

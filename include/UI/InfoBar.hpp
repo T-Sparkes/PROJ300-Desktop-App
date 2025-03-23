@@ -1,7 +1,7 @@
 #pragma once
 #include <imgui.h>
 #include <Eigen/Dense>
-#include "ViewPort.hpp"
+#include "Core/ViewPort.hpp"
 #include "Application.hpp"
 
 class InfoBar
@@ -23,7 +23,7 @@ inline InfoBar::InfoBar(SerialInterface* SerialComm, double& AverageFps) : m_Ave
 
 inline InfoBar::~InfoBar()
 {
-    
+    printf("InfoBar Destroyed\n");
 }
 
 inline void InfoBar::onUpdate()

@@ -1,6 +1,6 @@
 
-#include "ViewPort.hpp"
-#include "ViewPortRenderable.hpp"
+#include "Core/ViewPort.hpp"
+#include "Core/ViewPortRenderable.hpp"
 #include <algorithm>
 #include <cmath>
 

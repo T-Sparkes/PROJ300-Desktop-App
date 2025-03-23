@@ -1,5 +1,5 @@
 #pragma once
-#include "BaseApplication.hpp"
+#include "Core/BaseApplication.hpp"
 #include "WorldGrid.hpp"
 #include "Buffer.hpp"
 #include "SerialInterface.hpp"
@@ -8,7 +8,7 @@
 #include "BotControlWindow.hpp"
 #include "Bilateration.hpp"
 #include "ConstPosKalmanFilter.hpp"
-#include "InfoBar.hpp"
+#include "UI/InfoBar.hpp"
 
 #define FPS_BUFFER_SIZE 500
 
@@ -36,7 +36,6 @@ private:
     void MotorTestWindow();
     void ViewPortWindow();
     void GraphWindow();
-    void fpsWindow();
     void ConfigWindow();
 };
 

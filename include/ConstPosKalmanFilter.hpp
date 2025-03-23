@@ -2,7 +2,7 @@
 
 #include <Eigen/Dense>
 #include <iostream>
-#include "ViewPortRenderable.hpp"
+#include "Core/ViewPortRenderable.hpp"
 
 class ConstPosKalmanFilter : ViewPortRenderable
 {

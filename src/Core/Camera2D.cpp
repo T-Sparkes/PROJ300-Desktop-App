@@ -1,4 +1,4 @@
-#include "Camera2D.hpp"
+#include "Core/Camera2D.hpp"
 
 Camera2D::Camera2D(const Eigen::Vector2d& screenSize, const Eigen::Vector2d& position, int scale)
     : screenSize(screenSize), position(position), scale(scale)
