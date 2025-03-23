@@ -14,18 +14,18 @@ Application& Application::GetInstance()
 
 Application::Application() : m_WorldGrid({0, 0}, {10, 10}), biLat({-1, 0}, {1, 0}), m_KalmanFilter({0, -1}, 10e-6, 0.1)
 {
-    m_SerialMonitor = new SerialMonitor(&m_SerialComm);
-    m_ControlPanel = new BotControlWindow();
-    m_FpsBuffer = new Buffer<ImPlotPoint>(FPS_BUFFER_SIZE);
-    m_infoBar = new InfoBar(&m_SerialComm, m_AverageFps);
+    m_SerialMonitor = std::make_unique<SerialMonitor>(m_SerialComm);
+    m_ControlPanel = std::make_unique<BotControlWindow>();
+    m_FpsBuffer = std::make_unique<Buffer<ImPlotPoint>>(FPS_BUFFER_SIZE);
+    m_infoBar = std::make_unique<InfoBar>(m_SerialComm, m_AverageFps);
 }
 
 Application::~Application() 
 {
-    delete m_SerialMonitor;
-    delete m_ControlPanel;
-    delete m_FpsBuffer;
-    delete m_infoBar;
+    //delete m_SerialMonitor;
+    //delete m_ControlPanel;
+    //delete m_FpsBuffer;
+    //delete m_infoBar;
 }
 
 void Application::OnEvent(SDL_Event* event) 

@@ -3,27 +3,28 @@
 #include <Eigen/Dense>
 #include "Core/ViewPort.hpp"
 #include "Application.hpp"
+#include "SerialInterface.hpp"
 
 class InfoBar
 {
 private:
-    SerialInterface* m_SerialComm;
+    SerialInterface& m_SerialComm;
     double& m_AverageFps;
 
 public:
-    InfoBar(SerialInterface* SerialComm, double& AverageFps);
+    InfoBar(SerialInterface& SerialComm, double& AverageFps);
     ~InfoBar();
     void onUpdate();
 };
 
-inline InfoBar::InfoBar(SerialInterface* SerialComm, double& AverageFps) : m_AverageFps(AverageFps)
+inline InfoBar::InfoBar(SerialInterface& SerialComm, double& AverageFps) : m_SerialComm(SerialComm), m_AverageFps(AverageFps)
 {
-    m_SerialComm = SerialComm;
+
 }
 
 inline InfoBar::~InfoBar()
 {
-    printf("InfoBar Destroyed\n");
+
 }
 
 inline void InfoBar::onUpdate()
@@ -50,7 +51,7 @@ inline void InfoBar::onUpdate()
 
         ImGui::SameLine();
         static StatusPacket status;
-        m_SerialComm->getPacket(&status);
+        m_SerialComm.getPacket(&status);
 
         if (status.connected)
         {

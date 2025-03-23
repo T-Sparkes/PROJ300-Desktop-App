@@ -1,5 +1,20 @@
 #include "SerialInterface.hpp"
 
+SerialInterface::SerialInterface()
+{
+    // Test what ports are available by trying to open and close each one
+    //for (int i = 0; i < 256; i++)
+    //{
+    //    std::string portName = "COM" + std::to_string(i);
+//
+    //    if (m_SerialPort.openDevice(portName.c_str(), 115200) == 1)
+    //    {
+    //        printf("Port %s is available\n", portName.c_str());
+    //        m_SerialPort.closeDevice();
+    //    }
+    //}
+}
+
 SerialInterface::~SerialInterface()
 {
     ClosePort();
@@ -58,7 +73,7 @@ void SerialInterface::m_ReadPacket()
         int bytesRead = m_SerialPort.readBytes((uint8_t*)(rxBuffer), sizeof(rxBuffer));
         memcpy(&rxPacket, rxBuffer, sizeof(rxPacket));
 
-        PrintRawPacket(rxBuffer, PACKET_SIZE);
+        //PrintRawPacket(rxBuffer, PACKET_SIZE);
 
         if (rxPacket.header == PACKET_HEADER && rxPacket.packetID == ENCODER_PACKET_ID) // Encoder packet
         {

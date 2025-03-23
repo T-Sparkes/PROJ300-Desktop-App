@@ -76,6 +76,8 @@
         "string_view": "cpp",
         "text_encoding": "cpp",
         "mutex": "cpp",
-        "condition_variable": "cpp"
+        "condition_variable": "cpp",
+        "numeric": "cpp",
+        "random": "cpp"
     }
 }

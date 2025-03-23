@@ -7,6 +7,7 @@
 #include <mutex>
 #include <atomic>
 #include <functional>
+#include <vector>
 
 #define PACKET_ACK 0x01
 #define PACKET_HEADER 0xAA55
@@ -98,6 +99,7 @@ private:
     void m_WritePacket();
 
 public:
+    SerialInterface();
     ~SerialInterface();
     bool OpenPort(std::string portName, unsigned int baudrate);
     bool ClosePort();

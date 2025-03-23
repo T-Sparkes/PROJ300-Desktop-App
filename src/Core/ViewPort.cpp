@@ -28,13 +28,13 @@ ViewPort::~ViewPort()
 void ViewPort::AddRenderable(ViewPortRenderable* renderable)
 {
     m_Renderables.push_back(renderable);
-    SDL_Log("Added 1 Renderable - Total: %d\n", m_Renderables.size());
+    SDL_Log("VIEWPORT INFO: Renderable Added - Total: %d\n", m_Renderables.size());
 }
 
 void ViewPort::RemoveRenderable(ViewPortRenderable* renderable)
 {
     m_Renderables.erase(std::find(m_Renderables.begin(), m_Renderables.end(), renderable));
-    SDL_Log("Removed 1 Renderable - Total: %d\n", m_Renderables.size());
+    SDL_Log("VIEWPORT INFO: Renderable Removed - Total: %d\n", m_Renderables.size());
 }
 
 void ViewPort::ViewPortBegin()

@@ -20,7 +20,7 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 target_include_directories(${PROJECT_NAME} PRIVATE 
     ${INCLUDE_DIR} 
     ${THIRD_PARTY_DIR}
-    ${INCLUDE_DIR}/UI  # Add this if you have a UI subfolder
+    ${INCLUDE_DIR}/UI  
     ${INCLUDE_DIR}/Core 
 )
 
@@ -47,7 +47,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE imgui::imgui)
 find_package(implot CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE implot::implot)
 
-# Automatically copy runtime libraries (DLLs, SOs, etc.)
+# Automatically copy runtime libraries (DLLs)
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         $<TARGET_RUNTIME_DLLS:${PROJECT_NAME}>
