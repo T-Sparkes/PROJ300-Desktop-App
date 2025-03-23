@@ -4,8 +4,9 @@
 #include "Core/ViewPort.hpp"
 #include "Application.hpp"
 #include "SerialInterface.hpp"
+#include "UI/UIwindow.hpp"
 
-class InfoBar
+class InfoBar : public UIwindow
 {
 private:
     SerialInterface& m_SerialComm;
@@ -14,7 +15,7 @@ private:
 public:
     InfoBar(SerialInterface& SerialComm, double& AverageFps);
     ~InfoBar();
-    void onUpdate();
+    void OnUpdate() override;
 };
 
 inline InfoBar::InfoBar(SerialInterface& SerialComm, double& AverageFps) : m_SerialComm(SerialComm), m_AverageFps(AverageFps)
@@ -27,7 +28,7 @@ inline InfoBar::~InfoBar()
 
 }
 
-inline void InfoBar::onUpdate()
+inline void InfoBar::OnUpdate()
 {
     ImGuiIO& io = ImGui::GetIO();
     ViewPort& viewPort = ViewPort::GetInstance();

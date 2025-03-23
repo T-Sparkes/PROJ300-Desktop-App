@@ -73,7 +73,7 @@ void SerialInterface::m_ReadPacket()
         int bytesRead = m_SerialPort.readBytes((uint8_t*)(rxBuffer), sizeof(rxBuffer));
         memcpy(&rxPacket, rxBuffer, sizeof(rxPacket));
 
-        //PrintRawPacket(rxBuffer, PACKET_SIZE);
+        PrintRawPacket(rxBuffer, PACKET_SIZE);
 
         if (rxPacket.header == PACKET_HEADER && rxPacket.packetID == ENCODER_PACKET_ID) // Encoder packet
         {

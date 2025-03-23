@@ -1,19 +1,18 @@
 #include "imgui.h"
 #include "SerialInterface.hpp"
+#include "UI/UIwindow.hpp"
 
 #define SERIAL_LINE_SIZE_BYTES 128
 #define SERIAL_HISTORY_SIZE_LINES 64
-#define DEFAULT_PORT "COM?"
 #define DEFAULT_BAUDRATE 115200
 
-class SerialMonitor
+class SerialMonitor : public UIwindow
 {
 public:
     EncoderDataPacket EncPacket;
     AnchorRangePacket AncPacket;
     StatusPacket statPacket;
 
-    char portBuff[8] = DEFAULT_PORT;
     int baudInput = DEFAULT_BAUDRATE;
     std::vector<std::string> historyBuffer; // This is gross, i might fix it later
 
@@ -36,7 +35,7 @@ public:
         }
     }
 
-    void OnNewFrame()
+    void OnUpdate() override
     {
 
         ImGui::Begin("Serial Console");
@@ -72,14 +71,34 @@ public:
             if (serialCom.getPacket(&EncPacket) && encEnable)
             {
                 static char lineBuffer[SERIAL_LINE_SIZE_BYTES];
-                sprintf_s(lineBuffer, sizeof(lineBuffer), "PACKET: 0x%02X | 0x%02X | %f | %f | %f | %f |\n", EncPacket.header, EncPacket.packetID, EncPacket.encA, EncPacket.encB, EncPacket.velA, EncPacket.velB);
+                sprintf_s(
+                    lineBuffer, 
+                    sizeof(lineBuffer), 
+                    "PACKET: 0x%02X | 0x%02X | %f | %f | %f | %f |\n", 
+                    EncPacket.header, 
+                    EncPacket.packetID,
+                    EncPacket.encA, 
+                    EncPacket.encB, 
+                    EncPacket.velA, 
+                    EncPacket.velB
+                );
+
                 historyBuffer.push_back(lineBuffer);
             }
 
             if (serialCom.getPacket(&AncPacket) && ancEnable)
             {
                 static char lineBuffer[SERIAL_LINE_SIZE_BYTES];
-                sprintf_s(lineBuffer, sizeof(lineBuffer), "PACKET: 0x%02X | 0x%02X | %c | %.2f |\n", AncPacket.header, AncPacket.packetID, AncPacket.anchorID, abs(AncPacket.range));
+                sprintf_s(
+                    lineBuffer, 
+                    sizeof(lineBuffer), 
+                    "PACKET: 0x%02X | 0x%02X | %c | %.2f |\n", 
+                    AncPacket.header, 
+                    AncPacket.packetID, 
+                    AncPacket.anchorID, 
+                    abs(AncPacket.range)
+                );
+
                 historyBuffer.push_back(lineBuffer);
             }
 

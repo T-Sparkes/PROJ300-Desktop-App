@@ -14,25 +14,27 @@ Application& Application::GetInstance()
 
 Application::Application() : m_WorldGrid({0, 0}, {10, 10}), biLat({-1, 0}, {1, 0}), m_KalmanFilter({0, -1}, 10e-6, 0.1)
 {
-    m_SerialMonitor = std::make_unique<SerialMonitor>(m_SerialComm);
-    m_ControlPanel = std::make_unique<BotControlWindow>();
-    m_FpsBuffer = std::make_unique<Buffer<ImPlotPoint>>(FPS_BUFFER_SIZE);
-    m_infoBar = std::make_unique<InfoBar>(m_SerialComm, m_AverageFps);
+    m_infoBar = std::make_shared<InfoBar>(m_SerialComm, m_AverageFps);
+    m_SerialMonitor = std::make_shared<SerialMonitor>(m_SerialComm);
+    m_ControlPanel = std::make_shared<BotControlWindow>();
+
+    m_UIwindows.push_back(m_SerialMonitor);
+    m_UIwindows.push_back(m_ControlPanel);
+    m_UIwindows.push_back(m_infoBar);
+
+    m_FpsBuffer = std::make_shared<Buffer<ImPlotPoint>>(FPS_BUFFER_SIZE);
 }
 
 Application::~Application() 
 {
-    //delete m_SerialMonitor;
-    //delete m_ControlPanel;
-    //delete m_FpsBuffer;
-    //delete m_infoBar;
+
 }
 
 void Application::OnEvent(SDL_Event* event) 
 {
     if (ImGui::IsKeyDown(ImGuiKey_Enter) && ImGui::IsKeyDown(ImGuiKey_LeftAlt))
     {
-        appState = RESTART;
+        appState = RESTART; // Doesnt work anymore :(
     }
 
     if (ImGui::IsKeyDown(ImGuiKey_Escape))
@@ -44,7 +46,7 @@ void Application::OnEvent(SDL_Event* event)
 void Application::Update()
 {
     ImGuiIO& io = ImGui::GetIO();
-    m_FpsBuffer->addData({(double)SDL_GetTicks() / 1000.0, io.Framerate});
+    m_FpsBuffer->addData({(float)SDL_GetTicks() / 1000.0f, io.DeltaTime * 1000.0f});
 
     m_AverageFps = 0;
     for (int i = 0; i < m_FpsBuffer->size(); i++)
@@ -52,6 +54,7 @@ void Application::Update()
         m_AverageFps += m_FpsBuffer->data()[i][1];
     }
     m_AverageFps /= m_FpsBuffer->size();
+    m_AverageFps;
 
     EncoderDataPacket encoderData = m_SerialMonitor->EncPacket;
     m_Odom.update(encoderData.encA, encoderData.encB);
@@ -75,13 +78,20 @@ void Application::Update()
     m_KalmanFilter.predict({0, 0}, 0.1);
     m_KalmanFilter.update({biLat.getAnchorRange('A') , biLat.getAnchorRange('B')}, 0.1);
 
-    m_infoBar->onUpdate();
     GraphWindow();
     ConfigWindow();
     ViewPortWindow();
-    m_ControlPanel->onUpdate();
-    m_SerialMonitor->OnNewFrame();
     MotorTestWindow();
+
+    //m_infoBar->OnUpdate();
+    //m_ControlPanel->OnUpdate();
+    //m_SerialMonitor->OnUpdate();
+
+    for (auto& window : m_UIwindows)
+    {
+        window->OnUpdate();
+    }
+    
 }
 
 void Application::MotorTestWindow()

@@ -1,6 +1,7 @@
 #include <imgui.h>
+#include "UI/UIwindow.hpp"
 
-class BotControlWindow
+class BotControlWindow : public UIwindow
 {
 private:
     /* data */
@@ -8,7 +9,7 @@ public:
     BotControlWindow() = default;
     ~BotControlWindow() = default;
 
-    void onUpdate()
+    void OnUpdate() override
     {
         ImGui::Begin("Robot Controls");
         {

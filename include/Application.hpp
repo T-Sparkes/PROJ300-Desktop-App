@@ -9,6 +9,7 @@
 #include "BotControlWindow.hpp"
 #include "Bilateration.hpp"
 #include "ConstPosKalmanFilter.hpp"
+#include "UI/UIwindow.hpp"
 
 #define FPS_BUFFER_SIZE 500
 
@@ -16,17 +17,10 @@ class Application : public BaseApplication
 {
 public:
     static Application &GetInstance();
-    void OnEvent(SDL_Event *event) override;
-    void Update() override;
     ~Application();
-
+    
 private:
     double m_AverageFps;
-
-    std::unique_ptr<SerialMonitor> m_SerialMonitor;
-    std::unique_ptr<BotControlWindow> m_ControlPanel;
-    std::unique_ptr<InfoBar> m_infoBar;
-    std::unique_ptr<Buffer<ImPlotPoint>> m_FpsBuffer;
 
     GridRenderer m_WorldGrid;
     SerialInterface m_SerialComm;
@@ -34,7 +28,16 @@ private:
     Bilateration biLat;
     ConstPosKalmanFilter m_KalmanFilter;
 
+    std::shared_ptr<InfoBar> m_infoBar;
+    std::shared_ptr<Buffer<ImPlotPoint>> m_FpsBuffer;
+    std::shared_ptr<SerialMonitor> m_SerialMonitor;
+    std::shared_ptr<BotControlWindow> m_ControlPanel;
+
+    std::vector<std::shared_ptr<UIwindow>> m_UIwindows;
+
     Application();
+    void OnEvent(SDL_Event *event) override;
+    void Update() override;
     void MotorTestWindow();
     void ViewPortWindow();
     void GraphWindow();
