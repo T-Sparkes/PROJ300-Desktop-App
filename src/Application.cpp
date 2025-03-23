@@ -5,14 +5,16 @@
 
 Eigen::Vector2d wheelVelFromGoal(double x, double y, double theta, double targetX, double targetY); 
 
-Application::Application() : m_WorldGrid({0, 0}, {10, 10}), m_FpsBuffer(FPS_BUFFER_SIZE)
+Application::Application() : m_WorldGrid({0, 0}, {10, 10}), m_FpsBuffer(FPS_BUFFER_SIZE), biLat({-1, 0}, {1, 0}), m_KalmanFilter({0, -1}, 10e-6, 0.1)
 {
     m_SerialMonitor = new SerialMonitor(&m_SerialComm);
+    m_ControlPanel = new BotControlWindow();
 }
 
 Application::~Application() 
 {
     delete m_SerialMonitor;
+    delete m_ControlPanel;
 }
 
 void Application::OnEvent(SDL_Event* event) 
@@ -34,12 +36,26 @@ void Application::Update()
     m_FpsBuffer.addData({(double)SDL_GetTicks() / 1000.0, io.Framerate});
 
     EncoderDataPacket encoderData = m_SerialMonitor->EncPacket;
-    odom.update(encoderData.encA, encoderData.encB);
+    m_Odom.update(encoderData.encA, encoderData.encB);
 
     Eigen::Vector2d mousePosWorld = viewPort.GetCamera().transform.inverse() * GetViewPortMousePos();
-    Eigen::Vector2d wheelVels = wheelVelFromGoal(odom.getState().x(), odom.getState().y(), odom.getState().z(), mousePosWorld.x(), mousePosWorld.y());
+    Eigen::Vector2d wheelVels = wheelVelFromGoal(m_Odom.getState().x(), m_Odom.getState().y(), m_Odom.getState().z(), mousePosWorld.x(), mousePosWorld.y());
 
     m_SerialComm.SetCommandVel((float)wheelVels.x(), (float)wheelVels.y());
+
+    if (m_SerialMonitor->AncPacket.anchorID == 'A')
+    {
+        biLat.updateRange(m_SerialMonitor->AncPacket.range, biLat.rangeB);
+    }
+
+    else if (m_SerialMonitor->AncPacket.anchorID == 'B')
+    {
+        biLat.updateRange(biLat.rangeA, m_SerialMonitor->AncPacket.range);
+    }
+
+    m_KalmanFilter.setAnchors(biLat.getAnchorPos('A'), biLat.getAnchorPos('B'));
+    m_KalmanFilter.predict({0, 0}, 0.1);
+    m_KalmanFilter.update({biLat.getAnchorRange('A') , biLat.getAnchorRange('B')}, 0.1);
 
     fpsWindow();
     GraphWindow();
@@ -150,6 +166,7 @@ void Application::ConfigWindow()
 
     ImGui::Begin("Config");
     {
+        // Options for adjusting the world grid visualisation
         if (ImGui::CollapsingHeader("World Grid", ImGuiTreeNodeFlags_DefaultOpen))
         {
             ImGui::Checkbox("Enable Grid", &m_WorldGrid.bRender);
@@ -167,6 +184,36 @@ void Application::ConfigWindow()
         if (ImGui::CollapsingHeader("Kalman Filter", ImGuiTreeNodeFlags_DefaultOpen))
         {  
             // Todo
+        }
+        
+        // Options fo setting Anchor pos & and adjusting visualisation
+        if (ImGui::CollapsingHeader("BiLat Options", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::Checkbox("Show Anchors", &biLat.bDrawAnchors);
+            ImGui::Checkbox("Show Ranges", &biLat.bDrawRange);
+            ImGui::Checkbox("Show Raw Pos", &biLat.bDrawRawPos);
+            ImGui::SliderInt("Range Alpha", (int*)&biLat.rangeAlpha, 0, 255);
+            ImGui::Text("Anchor A Position: %f, %f", biLat.getAnchorPos('A').x(), biLat.getAnchorPos('A').y());
+            ImGui::Text("Anchor B Position: %f, %f", biLat.getAnchorPos('B').x(), biLat.getAnchorPos('B').y());
+            
+            static bool setAnchorA = false;
+            if(ImGui::Button("Set Pos A")) setAnchorA = true;
+
+            if (setAnchorA && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+            {
+                setAnchorA = false;
+                biLat.SetAnchorPos('A', mousePosWorld);
+            }
+
+            ImGui::SameLine();
+            static bool setAnchorB = false;
+            if(ImGui::Button("Set Pos B")) setAnchorB = true;
+
+            if (setAnchorB && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+            {
+                setAnchorB = false;
+                biLat.SetAnchorPos('B', mousePosWorld);
+            }
         }
     }
     ImGui::End();
@@ -194,3 +241,4 @@ Eigen::Vector2d wheelVelFromGoal(double x, double y, double theta, double target
 
     return {omegaL, omegaR}; 
 }
+

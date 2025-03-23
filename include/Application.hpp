@@ -5,6 +5,9 @@
 #include "SerialInterface.hpp"
 #include "SerialMonitor.hpp"
 #include "DiffDriveOdom.hpp"
+#include "BotControlWindow.hpp"
+#include "Bilateration.hpp"
+#include "ConstPosKalmanFilter.hpp"
 
 #define FPS_BUFFER_SIZE 500
 
@@ -22,7 +25,10 @@ private:
     Buffer<ImPlotPoint> m_FpsBuffer;
     SerialInterface m_SerialComm;
     SerialMonitor* m_SerialMonitor;
-    DiffDriveOdom odom;
+    BotControlWindow* m_ControlPanel;
+    DiffDriveOdom m_Odom;
+    Bilateration biLat;
+    ConstPosKalmanFilter m_KalmanFilter;
 
     void MotorTestWindow();
     void ViewPortWindow();
