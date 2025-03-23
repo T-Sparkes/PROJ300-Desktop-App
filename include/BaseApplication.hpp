@@ -51,19 +51,6 @@ protected:
         }
     }
 
-    Eigen::Vector2d GetViewPortMousePos()
-    {
-        viewPort.ViewPortBegin();
-
-        ImVec2 mousePos = ImGui::GetMousePos();          // Global mouse position (screen coordinates)
-        ImVec2 cursorPos = ImGui::GetCursorScreenPos();  // Top-left corner of the current ImGui content region
-        ImVec2 contentMousePos = ImVec2(mousePos.x - cursorPos.x, mousePos.y - cursorPos.y);
-        
-        viewPort.ViewPortEnd();
-
-        return ImToEigen(contentMousePos);
-    }
-
     Eigen::Vector2d ImToEigen(ImVec2 imVec)
     {
         return Eigen::Vector2d(imVec.x, imVec.y);

@@ -19,6 +19,7 @@ public:
     void RemoveRenderable(ViewPortRenderable *renderable);
     void ViewPortBegin();
     void ViewPortEnd();
+    Eigen::Vector2d GetViewPortMousePos();
     void RenderViewport();
     void RenderTexture(SDL_Texture *texture, Eigen::Vector2d pos, Eigen::Vector2d size, double angle, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
     SDL_Texture *LoadTexture(std::string path);

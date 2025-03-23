@@ -5,16 +5,27 @@
 
 Eigen::Vector2d wheelVelFromGoal(double x, double y, double theta, double targetX, double targetY); 
 
-Application::Application() : m_WorldGrid({0, 0}, {10, 10}), m_FpsBuffer(FPS_BUFFER_SIZE), biLat({-1, 0}, {1, 0}), m_KalmanFilter({0, -1}, 10e-6, 0.1)
+
+Application& Application::GetInstance()
+{
+    static Application instance;
+    return instance;
+}
+
+Application::Application() : m_WorldGrid({0, 0}, {10, 10}), biLat({-1, 0}, {1, 0}), m_KalmanFilter({0, -1}, 10e-6, 0.1)
 {
     m_SerialMonitor = new SerialMonitor(&m_SerialComm);
     m_ControlPanel = new BotControlWindow();
+    m_FpsBuffer = new Buffer<ImPlotPoint>(FPS_BUFFER_SIZE);
+    m_infoBar = new InfoBar(&m_SerialComm, m_AverageFps);
 }
 
 Application::~Application() 
 {
     delete m_SerialMonitor;
     delete m_ControlPanel;
+    delete m_FpsBuffer;
+    delete m_infoBar;
 }
 
 void Application::OnEvent(SDL_Event* event) 
@@ -33,12 +44,19 @@ void Application::OnEvent(SDL_Event* event)
 void Application::Update()
 {
     ImGuiIO& io = ImGui::GetIO();
-    m_FpsBuffer.addData({(double)SDL_GetTicks() / 1000.0, io.Framerate});
+    m_FpsBuffer->addData({(double)SDL_GetTicks() / 1000.0, io.Framerate});
+
+    m_AverageFps = 0;
+    for (int i = 0; i < m_FpsBuffer->size(); i++)
+    {
+        m_AverageFps += m_FpsBuffer->data()[i][1];
+    }
+    m_AverageFps /= m_FpsBuffer->size();
 
     EncoderDataPacket encoderData = m_SerialMonitor->EncPacket;
     m_Odom.update(encoderData.encA, encoderData.encB);
 
-    Eigen::Vector2d mousePosWorld = viewPort.GetCamera().transform.inverse() * GetViewPortMousePos();
+    Eigen::Vector2d mousePosWorld = viewPort.GetCamera().transform.inverse() * ViewPort::GetInstance().GetViewPortMousePos();
     Eigen::Vector2d wheelVels = wheelVelFromGoal(m_Odom.getState().x(), m_Odom.getState().y(), m_Odom.getState().z(), mousePosWorld.x(), mousePosWorld.y());
 
     m_SerialComm.SetCommandVel((float)wheelVels.x(), (float)wheelVels.y());
@@ -57,10 +75,11 @@ void Application::Update()
     m_KalmanFilter.predict({0, 0}, 0.1);
     m_KalmanFilter.update({biLat.getAnchorRange('A') , biLat.getAnchorRange('B')}, 0.1);
 
-    fpsWindow();
+    m_infoBar->onUpdate();
     GraphWindow();
     ConfigWindow();
     ViewPortWindow();
+    m_ControlPanel->onUpdate();
     m_SerialMonitor->OnNewFrame();
     MotorTestWindow();
 }
@@ -83,7 +102,7 @@ void Application::ViewPortWindow()
 {
     viewPort.ViewPortBegin();
     {
-        Eigen::Vector2d mousePosWorld = viewPort.GetCamera().transform.inverse() * GetViewPortMousePos();
+        Eigen::Vector2d mousePosWorld = viewPort.GetCamera().transform.inverse() * ViewPort::GetInstance().GetViewPortMousePos();
 
         if (ImGui::IsWindowHovered())
         {
@@ -95,7 +114,7 @@ void Application::ViewPortWindow()
     viewPort.ViewPortEnd();
 }
 
-inline void Application::GraphWindow()
+void Application::GraphWindow()
 {
     ImGui::Begin("Graphs");
     {
@@ -103,58 +122,9 @@ inline void Application::GraphWindow()
         {
             ImPlot::SetupAxes("Time (s)", "FPS", ImPlotAxisFlags_AutoFit);
             ImPlot::SetupAxisLimits(ImAxis_Y1, m_AverageFps - 10.0f, m_AverageFps + 10.0f, ImPlotCond_Always);
-            ImPlot::PlotLine("##fpsline", &m_FpsBuffer.data()[0][0], &m_FpsBuffer.data()[0][1], (int)m_FpsBuffer.size(), 0, 0, sizeof(m_FpsBuffer.data()[0]));
+            ImPlot::PlotLine("##fpsline", &m_FpsBuffer->data()[0][0], &m_FpsBuffer->data()[0][1], (int)m_FpsBuffer->size(), 0, 0, sizeof(m_FpsBuffer->data()[0]));
             ImPlot::EndPlot();
         }
-    }
-    ImGui::End();
-}
-
-void Application::fpsWindow()
-{
-    ImGuiIO& io = ImGui::GetIO();
-    ViewPort& viewPort = ViewPort::GetInstance();
-    Eigen::Vector2d mousePosWorld = viewPort.GetCamera().transform.inverse() * GetViewPortMousePos();
-
-    m_AverageFps = 0;
-    for (int i = 0; i < m_FpsBuffer.size(); i++)
-    {
-        m_AverageFps += m_FpsBuffer.data()[i][1];
-    }
-    m_AverageFps /= m_FpsBuffer.size();
-
-    ImGui::Begin("##FPS");
-    { 
-        ImGui::Text("FPS: %d ", (int)m_AverageFps);
-
-        ImGui::SameLine(); 
-        ImGui::Text("| Camera Pos: %f, %f ", viewPort.GetCamera().getPosition().x(), viewPort.GetCamera().getPosition().y());
-
-        ImGui::SameLine();
-        ImGui::Text("| Camera Scale: %d", viewPort.GetCamera().getScale());
-
-        ImGui::SameLine();
-        ImGui::Text("| Mouse World Pos: %f, %f ", mousePosWorld.x(), mousePosWorld.y());
-
-        ImGui::SameLine();
-        ImGui::Text("| Robot Connetion Status: ");
-
-        ImGui::SameLine();
-        static StatusPacket status;
-        m_SerialComm.getPacket(&status);
-
-        if (status.connected)
-        {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 255, 0, 255));
-            ImGui::Text("Connected");
-            ImGui::PopStyleColor();
-        }
-        else
-        {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(255, 0, 0, 255));
-            ImGui::Text("No Connection");
-            ImGui::PopStyleColor();
-        }        
     }
     ImGui::End();
 }
@@ -162,7 +132,7 @@ void Application::fpsWindow()
 void Application::ConfigWindow()
 {
     ViewPort& viewPort = ViewPort::GetInstance();
-    Eigen::Vector2d mousePosWorld = viewPort.GetCamera().transform.inverse() * GetViewPortMousePos();
+    Eigen::Vector2d mousePosWorld = viewPort.GetCamera().transform.inverse() * ViewPort::GetInstance().GetViewPortMousePos();
 
     ImGui::Begin("Config");
     {

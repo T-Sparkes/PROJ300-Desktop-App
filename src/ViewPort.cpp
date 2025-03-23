@@ -50,6 +50,20 @@ void ViewPort::ViewPortEnd()
     ImGui::PopStyleVar(2);
 }
 
+Eigen::Vector2d ViewPort::GetViewPortMousePos()
+{
+    ViewPortBegin();
+
+    ImVec2 mousePos = ImGui::GetMousePos();          // Global mouse position (screen coordinates)
+    ImVec2 cursorPos = ImGui::GetCursorScreenPos();  // Top-left corner of the current ImGui content region
+    ImVec2 contentMousePos = ImVec2(mousePos.x - cursorPos.x, mousePos.y - cursorPos.y);
+    
+    ViewPortEnd();
+
+    return Eigen::Vector2d(contentMousePos.x, contentMousePos.y);;
+}
+
+
 void ViewPort::RenderViewport()
 {
     if(m_renderTexture) SDL_DestroyTexture(m_renderTexture);

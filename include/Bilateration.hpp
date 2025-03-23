@@ -18,9 +18,9 @@ public:
 
     int rangeAlpha = 5;
 
-    bool bDrawRange;
-    bool bDrawAnchors;
-    bool bDrawRawPos;
+    bool bDrawRange = true;
+    bool bDrawAnchors = true;
+    bool bDrawRawPos = false;
 
     Bilateration() = default;
     Bilateration(Eigen::Vector2d m_anchorPosA_, Eigen::Vector2d anchorPosB_);

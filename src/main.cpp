@@ -6,8 +6,8 @@ int main(int argc, char const *argv[])
 
     while(returnState != QUIT)
     {
-        Application testApp;
-        returnState = testApp.Run();
+        Application& PROJ300 = Application::GetInstance();
+        returnState = PROJ300.Run();
     }
     return 0;
 }
