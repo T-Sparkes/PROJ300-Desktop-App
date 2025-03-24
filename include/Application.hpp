@@ -14,6 +14,16 @@
 
 #define FPS_BUFFER_SIZE 500
 
+#define DEFAULT_GRID_SIZE 4
+#define DEFAULT_VIEWPORT_ZOOM 250
+
+#define DEFAULT_ANCHOR_A_POS {-1, 0}
+#define DEFAULT_ANCHOR_B_POS {1, 0}
+
+#define KF_DEFAULT_POS {0, -1}
+#define KF_DEFAULT_Q 10e-6
+#define KF_DEFAULT_R 0.1
+
 class Application : public BaseApplication
 {
 public:
@@ -41,7 +51,6 @@ private:
     Application();
     void OnEvent(SDL_Event *event) override;
     void Update() override;
-    void MotorTestWindow();
     void ViewPortWindow();
     void GraphWindow();
 };

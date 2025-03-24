@@ -10,7 +10,7 @@ class GridRenderer : public ViewPortRenderable
 public:
     Eigen::Vector2d gridCenter;
     Eigen::Vector2d gridSize;
-    float gridStep = 1;
+    float gridStep = 0.5f;
     bool bRender = true;
 
     GridRenderer(Eigen::Vector2d gridCenter = {0, 0}, Eigen::Vector2d gridSize = {10, 10}) : gridCenter(gridCenter), gridSize(gridSize) {}

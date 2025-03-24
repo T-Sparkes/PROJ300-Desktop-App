@@ -7,7 +7,10 @@ Application& Application::GetInstance()
     return instance;
 }
 
-Application::Application() : m_WorldGrid({0, 0}, {10, 10}), m_biLat({-1, 0}, {1, 0}), m_KalmanFilter({0, -1}, 10e-6, 0.1)
+Application::Application() : 
+    m_WorldGrid({0, 0}, {DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE}), 
+    m_biLat(DEFAULT_ANCHOR_A_POS, DEFAULT_ANCHOR_B_POS), 
+    m_KalmanFilter(KF_DEFAULT_POS, KF_DEFAULT_Q, KF_DEFAULT_R)
 {
     m_ConfigWindow = std::make_shared<ConfigWindow>(m_WorldGrid, m_biLat, m_KalmanFilter);
     m_infoBar = std::make_shared<InfoBar>(m_RobotSerial, m_AverageFps);
@@ -20,6 +23,7 @@ Application::Application() : m_WorldGrid({0, 0}, {10, 10}), m_biLat({-1, 0}, {1,
     m_UIwindows.push_back(m_infoBar);
 
     m_FpsBuffer = std::make_unique<Buffer<ImPlotPoint>>(FPS_BUFFER_SIZE);
+    viewPort.GetCamera().setScale(DEFAULT_VIEWPORT_ZOOM);
 }
 
 Application::~Application() 
@@ -77,27 +81,12 @@ void Application::Update()
 
     GraphWindow();
     ViewPortWindow();
-    MotorTestWindow();
 
     for (auto& window : m_UIwindows)
     {
         window->OnUpdate();
     }
     
-}
-
-void Application::MotorTestWindow()
-{
-    ImGui::Begin("Motor DEBUG");
-
-    static float motorSpeedA = 0.0f;
-    static float motorSpeedB = 0.0f;
-
-    ImGui::SliderFloat("Motor Speed A", &motorSpeedA, 0.0f, 7.0f);
-    ImGui::SliderFloat("Motor Speed B", &motorSpeedB, 0.0f, 7.0f);
-
-    //m_SerialComm.SetCommandVel(motorSpeedA, motorSpeedB);
-    ImGui::End();
 }
 
 void Application::ViewPortWindow()
