@@ -1,10 +1,5 @@
 
 #include "Application.hpp"
-#include <Eigen/Dense>
-#include <algorithm>
-
-Eigen::Vector2d wheelVelFromGoal(double x, double y, double theta, double targetX, double targetY); 
-
 
 Application& Application::GetInstance()
 {
@@ -12,17 +7,19 @@ Application& Application::GetInstance()
     return instance;
 }
 
-Application::Application() : m_WorldGrid({0, 0}, {10, 10}), biLat({-1, 0}, {1, 0}), m_KalmanFilter({0, -1}, 10e-6, 0.1)
+Application::Application() : m_WorldGrid({0, 0}, {10, 10}), m_biLat({-1, 0}, {1, 0}), m_KalmanFilter({0, -1}, 10e-6, 0.1)
 {
-    m_infoBar = std::make_shared<InfoBar>(m_SerialComm, m_AverageFps);
-    m_SerialMonitor = std::make_shared<SerialMonitor>(m_SerialComm);
+    m_ConfigWindow = std::make_shared<ConfigWindow>(m_WorldGrid, m_biLat, m_KalmanFilter);
+    m_infoBar = std::make_shared<InfoBar>(m_RobotSerial, m_AverageFps);
+    m_SerialMonitor = std::make_shared<SerialMonitor>(m_RobotSerial);
     m_ControlPanel = std::make_shared<BotControlWindow>();
 
+    m_UIwindows.push_back(m_ConfigWindow);
     m_UIwindows.push_back(m_SerialMonitor);
     m_UIwindows.push_back(m_ControlPanel);
     m_UIwindows.push_back(m_infoBar);
 
-    m_FpsBuffer = std::make_shared<Buffer<ImPlotPoint>>(FPS_BUFFER_SIZE);
+    m_FpsBuffer = std::make_unique<Buffer<ImPlotPoint>>(FPS_BUFFER_SIZE);
 }
 
 Application::~Application() 
@@ -62,30 +59,25 @@ void Application::Update()
     Eigen::Vector2d mousePosWorld = viewPort.GetCamera().transform.inverse() * ViewPort::GetInstance().GetViewPortMousePos();
     Eigen::Vector2d wheelVels = wheelVelFromGoal(m_Odom.getState().x(), m_Odom.getState().y(), m_Odom.getState().z(), mousePosWorld.x(), mousePosWorld.y());
 
-    m_SerialComm.SetCommandVel((float)wheelVels.x(), (float)wheelVels.y());
+    m_RobotSerial.SetCommandVel((float)wheelVels.x(), (float)wheelVels.y());
 
     if (m_SerialMonitor->AncPacket.anchorID == 'A')
     {
-        biLat.updateRange(m_SerialMonitor->AncPacket.range, biLat.rangeB);
+        m_biLat.updateRange(m_SerialMonitor->AncPacket.range, m_biLat.rangeB);
     }
 
     else if (m_SerialMonitor->AncPacket.anchorID == 'B')
     {
-        biLat.updateRange(biLat.rangeA, m_SerialMonitor->AncPacket.range);
+        m_biLat.updateRange(m_biLat.rangeA, m_SerialMonitor->AncPacket.range);
     }
 
-    m_KalmanFilter.setAnchors(biLat.getAnchorPos('A'), biLat.getAnchorPos('B'));
+    m_KalmanFilter.setAnchors(m_biLat.getAnchorPos('A'), m_biLat.getAnchorPos('B'));
     m_KalmanFilter.predict({0, 0}, 0.1);
-    m_KalmanFilter.update({biLat.getAnchorRange('A') , biLat.getAnchorRange('B')}, 0.1);
+    m_KalmanFilter.update({m_biLat.getAnchorRange('A') , m_biLat.getAnchorRange('B')}, 0.1);
 
     GraphWindow();
-    ConfigWindow();
     ViewPortWindow();
     MotorTestWindow();
-
-    //m_infoBar->OnUpdate();
-    //m_ControlPanel->OnUpdate();
-    //m_SerialMonitor->OnUpdate();
 
     for (auto& window : m_UIwindows)
     {
@@ -139,86 +131,5 @@ void Application::GraphWindow()
     ImGui::End();
 }
 
-void Application::ConfigWindow()
-{
-    ViewPort& viewPort = ViewPort::GetInstance();
-    Eigen::Vector2d mousePosWorld = viewPort.GetCamera().transform.inverse() * ViewPort::GetInstance().GetViewPortMousePos();
 
-    ImGui::Begin("Config");
-    {
-        // Options for adjusting the world grid visualisation
-        if (ImGui::CollapsingHeader("World Grid", ImGuiTreeNodeFlags_DefaultOpen))
-        {
-            ImGui::Checkbox("Enable Grid", &m_WorldGrid.bRender);
-            int gridSizeInt[2] = {static_cast<int>(m_WorldGrid.gridSize.x()), static_cast<int>(m_WorldGrid.gridSize.y())};
-            ImGui::InputInt2("Grid Size", gridSizeInt);
-            m_WorldGrid.gridSize = Eigen::Vector2d(gridSizeInt[0], gridSizeInt[1]);
-            ImGui::InputFloat("Cell Size", &m_WorldGrid.gridStep, 0.1f, 1.0f);
-        }
-
-        if (ImGui::CollapsingHeader("Anchor Options", ImGuiTreeNodeFlags_DefaultOpen))
-        {
-            // Todo
-        }
-
-        if (ImGui::CollapsingHeader("Kalman Filter", ImGuiTreeNodeFlags_DefaultOpen))
-        {  
-            // Todo
-        }
-        
-        // Options fo setting Anchor pos & and adjusting visualisation
-        if (ImGui::CollapsingHeader("BiLat Options", ImGuiTreeNodeFlags_DefaultOpen))
-        {
-            ImGui::Checkbox("Show Anchors", &biLat.bDrawAnchors);
-            ImGui::Checkbox("Show Ranges", &biLat.bDrawRange);
-            ImGui::Checkbox("Show Raw Pos", &biLat.bDrawRawPos);
-            ImGui::SliderInt("Range Alpha", (int*)&biLat.rangeAlpha, 0, 255);
-            ImGui::Text("Anchor A Position: %f, %f", biLat.getAnchorPos('A').x(), biLat.getAnchorPos('A').y());
-            ImGui::Text("Anchor B Position: %f, %f", biLat.getAnchorPos('B').x(), biLat.getAnchorPos('B').y());
-            
-            static bool setAnchorA = false;
-            if(ImGui::Button("Set Pos A")) setAnchorA = true;
-
-            if (setAnchorA && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-            {
-                setAnchorA = false;
-                biLat.SetAnchorPos('A', mousePosWorld);
-            }
-
-            ImGui::SameLine();
-            static bool setAnchorB = false;
-            if(ImGui::Button("Set Pos B")) setAnchorB = true;
-
-            if (setAnchorB && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-            {
-                setAnchorB = false;
-                biLat.SetAnchorPos('B', mousePosWorld);
-            }
-        }
-    }
-    ImGui::End();
-}
-
-Eigen::Vector2d wheelVelFromGoal(double x, double y, double theta, double targetX, double targetY) 
-{
-
-    const double width = 0.173; 
-
-    double targetTheta = atan2(targetY - y, targetX - x);
-    double error = targetTheta - theta;
-
-    while (error > M_PI) error -= 2 * M_PI;
-    while (error < -M_PI) error += 2 * M_PI;
-
-    double omega = 1.0 * error;
-
-    double vForwards = 0.05;  
-    double vL = vForwards - (width / 2.0) * omega;
-    double vR = vForwards + (width / 2.0) * omega;
-
-    double omegaL = vL / 0.03;
-    double omegaR = vR / 0.03;
-
-    return {omegaL, omegaR}; 
-}
 

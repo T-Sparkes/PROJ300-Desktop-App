@@ -6,6 +6,8 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+inline Eigen::Vector2d wheelVelFromGoal(double x, double y, double theta, double targetX, double targetY); 
+
 class DiffDriveOdom : public ViewPortRenderable
 {
 private:
@@ -53,4 +55,25 @@ public:
     }
 };
 
+inline Eigen::Vector2d wheelVelFromGoal(double x, double y, double theta, double targetX, double targetY) 
+{
 
+    const double width = 0.173; 
+
+    double targetTheta = atan2(targetY - y, targetX - x);
+    double error = targetTheta - theta;
+
+    while (error > M_PI) error -= 2 * M_PI;
+    while (error < -M_PI) error += 2 * M_PI;
+
+    double omega = 1.0 * error;
+
+    double vForwards = 0.05;  
+    double vL = vForwards - (width / 2.0) * omega;
+    double vR = vForwards + (width / 2.0) * omega;
+
+    double omegaL = vL / 0.03;
+    double omegaR = vR / 0.03;
+
+    return {omegaL, omegaR}; 
+}

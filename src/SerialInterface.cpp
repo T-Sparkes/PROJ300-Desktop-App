@@ -20,6 +20,11 @@ SerialInterface::~SerialInterface()
     ClosePort();
 }
 
+// @brief Open a serial port with the specified name and baudrate.
+// @param portName the name of the port to open.
+// @param baudrate the baudrate to open the port with.
+// @return true if the port was opened successfully, false otherwise.
+// @note This function will start a new thread to read packets from the serial port.
 bool SerialInterface::OpenPort(std::string portName, unsigned int baudrate)
 {
     m_PortName = portName;
@@ -137,11 +142,15 @@ void SerialInterface::m_SerialTask()
     }
 }
 
-// get the latest packet from the serial interface.
+// @brief Get the latest encoder packet from the serial interface.
+// @param packet pointer to the encoder packet to be filled.
+// @return true if a new packet is available, false otherwise.
 bool SerialInterface::getPacket(EncoderDataPacket* packet)
 {
-    std::lock_guard<std::mutex> lock(m_Mutex);
-    if(m_EncoderDataReady)
+    std::unique_lock<std::mutex> lock(m_Mutex, std::try_to_lock);
+    if (!lock.owns_lock()) return false;
+
+    if (m_EncoderDataReady)
     {
         *packet = m_LatestEncoderPacket;
         m_EncoderDataReady = false;
@@ -150,10 +159,15 @@ bool SerialInterface::getPacket(EncoderDataPacket* packet)
     else return false;
 }
 
+// @brief Get the latest anchor range packet from the serial interface.
+// @param packet pointer to the anchor range packet to be filled.
+// @return true if a new packet is available, false otherwise.
 bool SerialInterface::getPacket(AnchorRangePacket* packet)
 {
-    std::lock_guard<std::mutex> lock(m_Mutex);
-    if(m_RangeDataReady)
+    std::unique_lock<std::mutex> lock(m_Mutex, std::try_to_lock);
+    if (!lock.owns_lock()) return false;
+
+    if (m_RangeDataReady)
     {
         *packet = m_LatestAnchorPacket;
         m_RangeDataReady = false;
@@ -162,11 +176,16 @@ bool SerialInterface::getPacket(AnchorRangePacket* packet)
     else return false;
 }
 
+// @brief Get the latest status packet from the serial interface.
+// @param packet pointer to the status packet to be filled.
+// @return true if a new packet is available, false otherwise.
 bool SerialInterface::getPacket(StatusPacket* packet)
 {
-    std::lock_guard<std::mutex> lock(m_Mutex);
+    std::unique_lock<std::mutex> lock(m_Mutex, std::try_to_lock); // Try to lock the mutex
+    if (!lock.owns_lock()) return false; // Pevents main thread from blocking
+
     *packet = m_LatestStatusPacket;
-    if(m_StatusDataReady)
+    if (m_StatusDataReady)
     {
         m_StatusDataReady = false;
         return true;
@@ -184,7 +203,8 @@ void SerialInterface::PrintRawPacket(uint8_t* bytes, size_t numBytes)
     printf("\n");
 }
 
-// Runs on seperate thread
+// @brief Write the latest command packet to the serial interface.
+// @note This function is called from the serial task thread.
 void SerialInterface::m_WritePacket()
 {
     uint8_t* rawBytes = reinterpret_cast<uint8_t*>(&m_LatestCommandPacket);
