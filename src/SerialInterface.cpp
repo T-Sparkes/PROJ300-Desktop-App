@@ -150,9 +150,10 @@ bool SerialInterface::getPacket(EncoderDataPacket* packet)
     std::unique_lock<std::mutex> lock(m_Mutex, std::try_to_lock);
     if (!lock.owns_lock()) return false;
 
+    *packet = m_LatestEncoderPacket;
+
     if (m_EncoderDataReady)
     {
-        *packet = m_LatestEncoderPacket;
         m_EncoderDataReady = false;
         return true;
     }
@@ -167,9 +168,10 @@ bool SerialInterface::getPacket(AnchorRangePacket* packet)
     std::unique_lock<std::mutex> lock(m_Mutex, std::try_to_lock);
     if (!lock.owns_lock()) return false;
 
+    *packet = m_LatestAnchorPacket;
+    
     if (m_RangeDataReady)
     {
-        *packet = m_LatestAnchorPacket;
         m_RangeDataReady = false;
         return true;
     }

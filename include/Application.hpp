@@ -28,18 +28,16 @@ class Application : public BaseApplication
 {
 public:
     static Application &GetInstance();
-    ~Application();
     
 private:
-    double m_AverageFps;
+    double m_AvgFrameTime;
+    std::unique_ptr<Buffer<ImPlotPoint>> m_FrameTBuffer;
 
     GridRenderer m_WorldGrid;
     SerialInterface m_RobotSerial;
     DiffDriveOdom m_Odom;
     Bilateration m_biLat;
     ConstPosKalmanFilter m_KalmanFilter;
-
-    std::unique_ptr<Buffer<ImPlotPoint>> m_FpsBuffer;
 
     std::shared_ptr<InfoBar> m_infoBar;
     std::shared_ptr<SerialMonitor> m_SerialMonitor;
@@ -53,5 +51,5 @@ private:
     void Update() override;
     void ViewPortWindow();
     void GraphWindow();
+    void CalcFrameTime();
 };
-

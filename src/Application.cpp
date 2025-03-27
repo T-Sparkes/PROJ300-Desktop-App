@@ -13,7 +13,7 @@ Application::Application() :
     m_KalmanFilter(KF_DEFAULT_POS, KF_DEFAULT_Q, KF_DEFAULT_R)
 {
     m_ConfigWindow = std::make_shared<ConfigWindow>(m_WorldGrid, m_biLat, m_KalmanFilter);
-    m_infoBar = std::make_shared<InfoBar>(m_RobotSerial, m_AverageFps);
+    m_infoBar = std::make_shared<InfoBar>(m_RobotSerial, m_AvgFrameTime);
     m_SerialMonitor = std::make_shared<SerialMonitor>(m_RobotSerial);
     m_ControlPanel = std::make_shared<BotControlWindow>();
 
@@ -23,13 +23,8 @@ Application::Application() :
     m_UIwindows.push_back(m_infoBar);
 
     viewPort.GetCamera().setScale(DEFAULT_VIEWPORT_ZOOM);
-    m_FpsBuffer = std::make_unique<Buffer<ImPlotPoint>>(FPS_BUFFER_SIZE);
+    m_FrameTBuffer = std::make_unique<Buffer<ImPlotPoint>>(FPS_BUFFER_SIZE);
     m_KalmanFilter.setAnchors(DEFAULT_ANCHOR_A_POS, DEFAULT_ANCHOR_B_POS);
-}
-
-Application::~Application() 
-{
-
 }
 
 void Application::OnEvent(SDL_Event* event) 
@@ -54,24 +49,30 @@ void Application::OnEvent(SDL_Event* event)
 
 void Application::Update()
 {
-    ImGuiIO& io = ImGui::GetIO();
-    m_FpsBuffer->addData({(float)SDL_GetTicks() / 1000.0f, io.DeltaTime * 1000.0f});
+    // Get data from robot
+    StatusPacket statusData;
+    AnchorRangePacket rangeData;
+    EncoderDataPacket encoderData;
 
-    m_AverageFps = 0;
-    for (int i = 0; i < m_FpsBuffer->size(); i++)
-    {
-        m_AverageFps += m_FpsBuffer->data()[i][1];
-    }
-    m_AverageFps /= m_FpsBuffer->size();
+    //m_RobotSerial.getPacket(&statusData);
+    //m_RobotSerial.getPacket(&rangeData);
+    //m_RobotSerial.getPacket(&encoderData);
 
-    EncoderDataPacket encoderData = m_SerialMonitor->EncPacket;
-    m_Odom.update(encoderData.encA, encoderData.encB);
+    // Temp odom stuff
+    //m_Odom.update(encoderData.encA, encoderData.encB);
+    //Eigen::Vector2d mousePosWorld = viewPort.GetCamera().transform.inverse() * ViewPort::GetInstance().GetViewPortMousePos();
+//
+    //Eigen::Vector2d wheelVels = wheelVelFromGoal(
+    //    m_Odom.getState().x(), 
+    //    m_Odom.getState().y(), 
+    //    m_Odom.getState().z(), 
+    //    mousePosWorld.x(), 
+    //    mousePosWorld.y()
+    //); // Temp, do a better job of this
+//
+    //m_RobotSerial.SetCommandVel((float)wheelVels.x(), (float)wheelVels.y());
 
-    Eigen::Vector2d mousePosWorld = viewPort.GetCamera().transform.inverse() * ViewPort::GetInstance().GetViewPortMousePos();
-    Eigen::Vector2d wheelVels = wheelVelFromGoal(m_Odom.getState().x(), m_Odom.getState().y(), m_Odom.getState().z(), mousePosWorld.x(), mousePosWorld.y()); // Temp, do a better job of this
-
-    m_RobotSerial.SetCommandVel((float)wheelVels.x(), (float)wheelVels.y());
-
+    // Update bilateration visualisation
     if (m_SerialMonitor->AncPacket.anchorID == 'A')
     {
         m_biLat.updateRange(m_SerialMonitor->AncPacket.range, m_biLat.rangeB);
@@ -82,9 +83,11 @@ void Application::Update()
         m_biLat.updateRange(m_biLat.rangeA, m_SerialMonitor->AncPacket.range);
     }
 
+    // Update Kalman filter
     m_KalmanFilter.predict({0, 0}, 0.1);
     m_KalmanFilter.update({m_biLat.getAnchorRange('A') , m_biLat.getAnchorRange('B')}, 0.1);
 
+    // Update UI
     GraphWindow();
     ViewPortWindow();
 
@@ -92,7 +95,9 @@ void Application::Update()
     {
         window->OnUpdate();
     }
-    
+
+    // Self explanatory really
+    CalcFrameTime();
 }
 
 void Application::ViewPortWindow()
@@ -118,13 +123,24 @@ void Application::GraphWindow()
         if (ImGui::CollapsingHeader("Frametime Graph##Header", ImGuiTreeNodeFlags_DefaultOpen) && ImPlot::BeginPlot("Frametime##graph")) 
         {
             ImPlot::SetupAxes("Time (s)", "Frametime (ms)", ImPlotAxisFlags_AutoFit);
-            ImPlot::SetupAxisLimits(ImAxis_Y1, m_AverageFps - 10.0f, m_AverageFps + 10.0f, ImPlotCond_Always);
-            ImPlot::PlotLine("##fpsline", &m_FpsBuffer->data()[0][0], &m_FpsBuffer->data()[0][1], (int)m_FpsBuffer->size(), 0, 0, sizeof(m_FpsBuffer->data()[0]));
+            ImPlot::SetupAxisLimits(ImAxis_Y1, m_AvgFrameTime - 10.0f, m_AvgFrameTime + 10.0f, ImPlotCond_Always);
+            ImPlot::PlotLine("##fpsline", &m_FrameTBuffer->data()[0][0], &m_FrameTBuffer->data()[0][1], (int)m_FrameTBuffer->size(), 0, 0, sizeof(m_FrameTBuffer->data()[0]));
             ImPlot::EndPlot();
         }
     }
     ImGui::End();
 }
 
+void Application::CalcFrameTime()
+{
+    m_AvgFrameTime = 0;
+    m_FrameTBuffer->addData({(float)SDL_GetTicks() / 1000.0f, ImGui::GetIO().DeltaTime * 1000.0f});
+    
+    for (int i = 0; i < m_FrameTBuffer->size(); i++)
+    {
+        m_AvgFrameTime += m_FrameTBuffer->data()[i][1];
+    }
+    m_AvgFrameTime /= m_FrameTBuffer->size();
+}
 
 

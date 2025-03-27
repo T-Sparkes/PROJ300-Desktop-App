@@ -46,16 +46,17 @@ public:
 
         ImGui::Begin("Serial Console");
         {
-            // Convert vector to char array, this is dumb
-            std::vector<const char*> availablePortsChar;
+            if (availablePorts.empty()) availablePorts.push_back("None");
+            
+            std::string availablePortsChar;
             for (auto& port : availablePorts)
             {
-                availablePortsChar.push_back(port.c_str());
+                availablePortsChar += port + '\0';
             }
 
             // Combo box to select port
             static int selectedIdx = 0;
-            ImGui::Combo("SerialPort", &selectedIdx, availablePortsChar.data(), (int)availablePortsChar.size());
+            ImGui::Combo("SerialPort", &selectedIdx, availablePortsChar.c_str(), (int)availablePortsChar.size());
             ImGui::InputInt("BaudRate", &baudInput, 0, 0);
             
             ImGui::Separator();

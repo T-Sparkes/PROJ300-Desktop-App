@@ -13,6 +13,7 @@ public:
     void predict(const Eigen::Vector2d &U, double dt);
     void update(const Eigen::Vector2d& measurement, double dt);
     void render() override;
+    
     Eigen::Vector2d getStateEstimate();
     double& GetProcessNoiseRef();
     double& GetProcessNoiseThetaRef();
