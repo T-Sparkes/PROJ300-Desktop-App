@@ -22,8 +22,9 @@ Application::Application() :
     m_UIwindows.push_back(m_ControlPanel);
     m_UIwindows.push_back(m_infoBar);
 
-    m_FpsBuffer = std::make_unique<Buffer<ImPlotPoint>>(FPS_BUFFER_SIZE);
     viewPort.GetCamera().setScale(DEFAULT_VIEWPORT_ZOOM);
+    m_FpsBuffer = std::make_unique<Buffer<ImPlotPoint>>(FPS_BUFFER_SIZE);
+    m_KalmanFilter.setAnchors(DEFAULT_ANCHOR_A_POS, DEFAULT_ANCHOR_B_POS);
 }
 
 Application::~Application() 
@@ -42,6 +43,13 @@ void Application::OnEvent(SDL_Event* event)
     {
         appState = QUIT;
     }
+
+    if (ImGui::IsKeyDown(ImGuiKey_F11))
+    {
+        static bool bFullscreen = false;
+        bFullscreen = !bFullscreen;
+        SDL_SetWindowFullscreen(RendererBackend::GetInstance().GetSdlWindow(), bFullscreen);
+    }
 }   
 
 void Application::Update()
@@ -55,13 +63,12 @@ void Application::Update()
         m_AverageFps += m_FpsBuffer->data()[i][1];
     }
     m_AverageFps /= m_FpsBuffer->size();
-    m_AverageFps;
 
     EncoderDataPacket encoderData = m_SerialMonitor->EncPacket;
     m_Odom.update(encoderData.encA, encoderData.encB);
 
     Eigen::Vector2d mousePosWorld = viewPort.GetCamera().transform.inverse() * ViewPort::GetInstance().GetViewPortMousePos();
-    Eigen::Vector2d wheelVels = wheelVelFromGoal(m_Odom.getState().x(), m_Odom.getState().y(), m_Odom.getState().z(), mousePosWorld.x(), mousePosWorld.y());
+    Eigen::Vector2d wheelVels = wheelVelFromGoal(m_Odom.getState().x(), m_Odom.getState().y(), m_Odom.getState().z(), mousePosWorld.x(), mousePosWorld.y()); // Temp, do a better job of this
 
     m_RobotSerial.SetCommandVel((float)wheelVels.x(), (float)wheelVels.y());
 
@@ -75,7 +82,6 @@ void Application::Update()
         m_biLat.updateRange(m_biLat.rangeA, m_SerialMonitor->AncPacket.range);
     }
 
-    m_KalmanFilter.setAnchors(m_biLat.getAnchorPos('A'), m_biLat.getAnchorPos('B'));
     m_KalmanFilter.predict({0, 0}, 0.1);
     m_KalmanFilter.update({m_biLat.getAnchorRange('A') , m_biLat.getAnchorRange('B')}, 0.1);
 
@@ -109,9 +115,9 @@ void Application::GraphWindow()
 {
     ImGui::Begin("Graphs");
     {
-        if (ImGui::CollapsingHeader("Fps Graph##Header", ImGuiTreeNodeFlags_DefaultOpen) && ImPlot::BeginPlot("Fps##graph")) 
+        if (ImGui::CollapsingHeader("Frametime Graph##Header", ImGuiTreeNodeFlags_DefaultOpen) && ImPlot::BeginPlot("Frametime##graph")) 
         {
-            ImPlot::SetupAxes("Time (s)", "FPS", ImPlotAxisFlags_AutoFit);
+            ImPlot::SetupAxes("Time (s)", "Frametime (ms)", ImPlotAxisFlags_AutoFit);
             ImPlot::SetupAxisLimits(ImAxis_Y1, m_AverageFps - 10.0f, m_AverageFps + 10.0f, ImPlotCond_Always);
             ImPlot::PlotLine("##fpsline", &m_FpsBuffer->data()[0][0], &m_FpsBuffer->data()[0][1], (int)m_FpsBuffer->size(), 0, 0, sizeof(m_FpsBuffer->data()[0]));
             ImPlot::EndPlot();

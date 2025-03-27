@@ -101,7 +101,7 @@ private:
 public:
     SerialInterface();
     ~SerialInterface();
-    bool OpenPort(std::string portName, unsigned int baudrate);
+    bool OpenPort(std::string portName, unsigned int baudrate, bool printDebug = true);
     bool ClosePort();
     void SetCommandVel(float velA, float velB);
     bool getPacket(EncoderDataPacket *packet);

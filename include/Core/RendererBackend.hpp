@@ -45,6 +45,7 @@ public:
     void EndFrame();
     void ProcessEvent(SDL_Event* event);
     SDL_Renderer* GetSdlRenderer();
+    SDL_Window* GetSdlWindow();
 
 private:
     RendererBackend(unsigned int windowSizeX, unsigned int windowSizeY);

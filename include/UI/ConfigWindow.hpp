@@ -11,17 +11,17 @@ class ConfigWindow : public UIwindow
 {
 private:
     GridRenderer& m_WorldGrid;
-    Bilateration& biLat;
+    Bilateration& m_biLat;
     ConstPosKalmanFilter& m_KalmanFilter;
 
 public:
-    ConfigWindow(GridRenderer& worldGrid, Bilateration& biLat, ConstPosKalmanFilter& kalmanFilter);
+    ConfigWindow(GridRenderer& worldGrid, Bilateration& m_biLat, ConstPosKalmanFilter& kalmanFilter);
     ~ConfigWindow();
     void OnUpdate() override;
 };
 
-inline ConfigWindow::ConfigWindow(GridRenderer& worldGrid, Bilateration& biLat, ConstPosKalmanFilter& kalmanFilter) 
-: m_WorldGrid(worldGrid), biLat(biLat), m_KalmanFilter(kalmanFilter)
+inline ConfigWindow::ConfigWindow(GridRenderer& worldGrid, Bilateration& m_biLat, ConstPosKalmanFilter& kalmanFilter) 
+: m_WorldGrid(worldGrid), m_biLat(m_biLat), m_KalmanFilter(kalmanFilter)
 {
 
 }
@@ -51,12 +51,12 @@ inline void ConfigWindow::OnUpdate()
         // Options fo setting Anchor pos & and adjusting visualisation
         if (ImGui::CollapsingHeader("Anchor Options", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            ImGui::Checkbox("Show Anchors", &biLat.bDrawAnchors);
-            ImGui::Checkbox("Show Ranges", &biLat.bDrawRange);
-            ImGui::Checkbox("Show Raw Pos", &biLat.bDrawRawPos);
-            ImGui::SliderInt("Range Alpha", (int*)&biLat.rangeAlpha, 0, 255);
-            ImGui::Text("Anchor A Position: %f, %f", biLat.getAnchorPos('A').x(), biLat.getAnchorPos('A').y());
-            ImGui::Text("Anchor B Position: %f, %f", biLat.getAnchorPos('B').x(), biLat.getAnchorPos('B').y());
+            ImGui::Checkbox("Show Anchors", &m_biLat.bDrawAnchors);
+            ImGui::Checkbox("Show Ranges", &m_biLat.bDrawRange);
+            ImGui::Checkbox("Show Raw Pos", &m_biLat.bDrawRawPos);
+            ImGui::SliderInt("Range Alpha", (int*)&m_biLat.rangeAlpha, 0, 255);
+            ImGui::Text("Anchor A Position: %.3f, %.3f", m_biLat.getAnchorPos('A').x(), m_biLat.getAnchorPos('A').y());
+            ImGui::Text("Anchor B Position: %.3f, %.3f", m_biLat.getAnchorPos('B').x(), m_biLat.getAnchorPos('B').y());
             
             static bool setAnchorA = false;
             if(ImGui::Button("Set Pos A")) setAnchorA = true;
@@ -64,7 +64,8 @@ inline void ConfigWindow::OnUpdate()
             if (setAnchorA && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
             {
                 setAnchorA = false;
-                biLat.SetAnchorPos('A', mousePosWorld);
+                m_biLat.SetAnchorPos('A', mousePosWorld);
+                m_KalmanFilter.setAnchors(m_biLat.getAnchorPos('A'), m_biLat.getAnchorPos('B'));
             }
 
             ImGui::SameLine();
@@ -74,7 +75,8 @@ inline void ConfigWindow::OnUpdate()
             if (setAnchorB && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
             {
                 setAnchorB = false;
-                biLat.SetAnchorPos('B', mousePosWorld);
+                m_biLat.SetAnchorPos('B', mousePosWorld);
+                m_KalmanFilter.setAnchors(m_biLat.getAnchorPos('A'), m_biLat.getAnchorPos('B'));
             }
         }
 

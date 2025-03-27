@@ -1,4 +1,5 @@
 #include "Core/RendererBackend.hpp"
+#include "RendererBackend.hpp"
 
 RendererBackend::RendererBackend(unsigned int windowSizeX, unsigned int windowSizeY)
 {
@@ -69,9 +70,14 @@ void RendererBackend::ProcessEvent(SDL_Event* event)
     }
 }
 
-SDL_Renderer *RendererBackend::GetSdlRenderer()
+SDL_Renderer* RendererBackend::GetSdlRenderer()
 {
     return m_sdlRenderer;
+}
+
+SDL_Window* RendererBackend::GetSdlWindow()
+{
+    return m_Window;
 }
 
 RendererBackend::~RendererBackend()

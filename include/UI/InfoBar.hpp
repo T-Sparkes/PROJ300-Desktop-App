@@ -36,16 +36,16 @@ inline void InfoBar::OnUpdate()
 
     ImGui::Begin("##FPS");
     { 
-        ImGui::Text("FPS: %d ", (int)m_AverageFps);
+        ImGui::Text("FPS: %d ", (int)(1000.0 / m_AverageFps));
 
         ImGui::SameLine(); 
-        ImGui::Text("| Camera Pos: %f, %f ", viewPort.GetCamera().getPosition().x(), viewPort.GetCamera().getPosition().y());
+        ImGui::Text("| Camera Pos: %.3f, %.3f ", viewPort.GetCamera().getPosition().x(), viewPort.GetCamera().getPosition().y());
 
         ImGui::SameLine();
         ImGui::Text("| Camera Scale: %d", viewPort.GetCamera().getScale());
 
         ImGui::SameLine();
-        ImGui::Text("| Mouse World Pos: %f, %f ", mousePosWorld.x(), mousePosWorld.y());
+        ImGui::Text("| Mouse World Pos: %.3f, %.3f ", mousePosWorld.x(), mousePosWorld.y());
 
         ImGui::SameLine();
         ImGui::Text("| Robot Connetion Status: ");

@@ -25,26 +25,26 @@ SerialInterface::~SerialInterface()
 // @param baudrate the baudrate to open the port with.
 // @return true if the port was opened successfully, false otherwise.
 // @note This function will start a new thread to read packets from the serial port.
-bool SerialInterface::OpenPort(std::string portName, unsigned int baudrate)
+bool SerialInterface::OpenPort(std::string portName, unsigned int baudrate, bool printDebug)
 {
     m_PortName = portName;
     m_Baudrate = baudrate;
 
     if (m_SerialPort.isDeviceOpen())
     {
-        printf("SERIAL WARN: Port %s is already open\n", m_PortName.c_str());
+        if (printDebug) printf("SERIAL WARN: Port %s is already open\n", m_PortName.c_str());
         return false;
     }
     else if (m_SerialPort.openDevice(m_PortName.c_str(), m_Baudrate) != 1 || m_Worker)
     {
-        printf("SERIAL ERROR: Unable to open port %s\n", m_PortName.c_str());
+        if (printDebug) printf("SERIAL ERROR: Unable to open port %s\n", m_PortName.c_str());
         return false;
     } 
     else
     {
         m_RunThread = true;
         m_Worker = new std::thread(&SerialInterface::m_SerialTask, this);
-        printf("SERIAL INFO: Port %s opened\n", m_PortName.c_str());  
+        if (printDebug) printf("SERIAL INFO: Port %s opened\n", m_PortName.c_str());  
         return true;
     }   
 }
@@ -78,7 +78,7 @@ void SerialInterface::m_ReadPacket()
         int bytesRead = m_SerialPort.readBytes((uint8_t*)(rxBuffer), sizeof(rxBuffer));
         memcpy(&rxPacket, rxBuffer, sizeof(rxPacket));
 
-        PrintRawPacket(rxBuffer, PACKET_SIZE);
+        //PrintRawPacket(rxBuffer, PACKET_SIZE);
 
         if (rxPacket.header == PACKET_HEADER && rxPacket.packetID == ENCODER_PACKET_ID) // Encoder packet
         {
