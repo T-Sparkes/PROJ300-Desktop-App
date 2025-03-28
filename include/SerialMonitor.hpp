@@ -111,11 +111,12 @@ public:
                 sprintf_s(
                     lineBuffer, 
                     sizeof(lineBuffer), 
-                    "PACKET: 0x%02X | 0x%02X | %c | %.2f |\n", 
+                    "PACKET: 0x%02X | 0x%02X | %c | %.2f | %.2f |\n", 
                     AncPacket.header, 
                     AncPacket.packetID, 
                     AncPacket.anchorID, 
-                    abs(AncPacket.range)
+                    abs(AncPacket.range),
+                    AncPacket.rxPower                    
                 );
 
                 historyBuffer.push_back(lineBuffer);

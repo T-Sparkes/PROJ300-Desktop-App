@@ -21,7 +21,7 @@
 #define DEFAULT_ANCHOR_B_POS {1, 0}
 
 #define KF_DEFAULT_POS {0, -1}
-#define KF_DEFAULT_Q 10e-6
+#define KF_DEFAULT_Q 1e-6
 #define KF_DEFAULT_R 0.1
 
 class Application : public BaseApplication

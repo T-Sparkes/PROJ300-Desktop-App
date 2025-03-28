@@ -55,6 +55,7 @@ struct AnchorRangePacket
     uint8_t packetID;
     uint8_t anchorID;
     float range;
+    float rxPower;
 };
 #pragma pack(pop)
 

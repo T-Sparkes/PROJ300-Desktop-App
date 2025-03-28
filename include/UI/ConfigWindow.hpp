@@ -57,6 +57,12 @@ inline void ConfigWindow::OnUpdate()
             ImGui::SliderInt("Range Alpha", (int*)&m_biLat.rangeAlpha, 0, 255);
             ImGui::Text("Anchor A Position: %.3f, %.3f", m_biLat.getAnchorPos('A').x(), m_biLat.getAnchorPos('A').y());
             ImGui::Text("Anchor B Position: %.3f, %.3f", m_biLat.getAnchorPos('B').x(), m_biLat.getAnchorPos('B').y());
+
+            ImGui::Text("Anchor A Range: %.3f", m_biLat.getAnchorRange('A'));
+            ImGui::Text("Corrected A Range: %.3f", m_biLat.getAnchorRange('A') * 0.75f + 0.375f);
+
+            ImGui::Text("Anchor B Range: %.3f", m_biLat.getAnchorRange('B'));
+            ImGui::Text("Corrected B Range: %.3f", m_biLat.getAnchorRange('B') * 0.75f + 0.375f);
             
             static bool setAnchorA = false;
             if(ImGui::Button("Set Pos A")) setAnchorA = true;

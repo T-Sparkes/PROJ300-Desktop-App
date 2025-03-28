@@ -15,7 +15,7 @@ Application::Application() :
     m_ConfigWindow = std::make_shared<ConfigWindow>(m_WorldGrid, m_biLat, m_KalmanFilter);
     m_infoBar = std::make_shared<InfoBar>(m_RobotSerial, m_AvgFrameTime);
     m_SerialMonitor = std::make_shared<SerialMonitor>(m_RobotSerial);
-    m_ControlPanel = std::make_shared<BotControlWindow>();
+    m_ControlPanel = std::make_shared<BotControlWindow>(m_RobotSerial);
 
     m_UIwindows.push_back(m_ConfigWindow);
     m_UIwindows.push_back(m_SerialMonitor);
@@ -50,15 +50,15 @@ void Application::OnEvent(SDL_Event* event)
 void Application::Update()
 {
     // Get data from robot
-    StatusPacket statusData;
-    AnchorRangePacket rangeData;
-    EncoderDataPacket encoderData;
+    //StatusPacket statusData;
+    //AnchorRangePacket rangeData;
+    //EncoderDataPacket encoderData;
 
     //m_RobotSerial.getPacket(&statusData);
     //m_RobotSerial.getPacket(&rangeData);
     //m_RobotSerial.getPacket(&encoderData);
-
-    // Temp odom stuff
+//
+    //// Temp odom stuff
     //m_Odom.update(encoderData.encA, encoderData.encB);
     //Eigen::Vector2d mousePosWorld = viewPort.GetCamera().transform.inverse() * ViewPort::GetInstance().GetViewPortMousePos();
 //
@@ -72,10 +72,15 @@ void Application::Update()
 //
     //m_RobotSerial.SetCommandVel((float)wheelVels.x(), (float)wheelVels.y());
 
+    // Calculate horizontal range if anchor is 75cm above the ground
+    //static float correctedRange = sqrt(pow(m_SerialMonitor->AncPacket.range, 2) - pow(0.75f, 2));
+    //correctedRange = std::max(m_SerialMonitor->AncPacket.range, 0.0f); // Clamp to 0
+    //correctedRange = std::min(m_SerialMonitor->AncPacket.range, 10.0f); // Clamp to 10m
+
     // Update bilateration visualisation
     if (m_SerialMonitor->AncPacket.anchorID == 'A')
-    {
-        m_biLat.updateRange(m_SerialMonitor->AncPacket.range, m_biLat.rangeB);
+    {   
+        m_biLat.updateRange(m_SerialMonitor->AncPacket.range * 0.75f + 0.375f, m_biLat.rangeB);
     }
 
     else if (m_SerialMonitor->AncPacket.anchorID == 'B')
