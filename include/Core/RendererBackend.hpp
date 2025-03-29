@@ -32,13 +32,25 @@
 class RendererBackend
 {
 public:
-    RendererBackend();
+    static RendererBackend& GetInstance(unsigned int windowSizeX = DEFAULT_WINDOW_SIZE_X, unsigned int windowSizeY = DEFAULT_WINDOW_SIZE_Y)
+    {
+        static RendererBackend instance(windowSizeX, windowSizeY);
+        return instance;
+    }
+
+    RendererBackend(const RendererBackend&) = delete;
+    RendererBackend& operator=(const RendererBackend&) = delete;
+
     void StartFrame();
     void EndFrame();
     void ProcessEvent(SDL_Event* event);
+    SDL_Renderer* GetSdlRenderer();
+    SDL_Window* GetSdlWindow();
+
+private:
+    RendererBackend(unsigned int windowSizeX, unsigned int windowSizeY);
     ~RendererBackend();
 
-protected:
     SDL_Window* m_Window = nullptr; 
     SDL_Renderer* m_sdlRenderer = nullptr;
     float m_DpiScale;

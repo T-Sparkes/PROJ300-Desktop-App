@@ -11,14 +11,25 @@ set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
 set(THIRD_PARTY_DIR ${CMAKE_SOURCE_DIR}/thirdparty)
 
 # Add all .cpp files from the src and thirdparty directories
-file(GLOB SOURCES ${SOURCE_DIR}/*.cpp ${THIRD_PARTY_DIR}/*.cpp)
+file(GLOB_RECURSE SOURCES ${SOURCE_DIR}/*.cpp ${THIRD_PARTY_DIR}/*.cpp)
 
 # Create the main executable
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 # Add include directories for the target
-target_include_directories(${PROJECT_NAME} PRIVATE ${INCLUDE_DIR} ${THIRD_PARTY_DIR})
-target_link_directories(${PROJECT_NAME} PRIVATE ${INCLUDE_DIR} ${THIRD_PARTY_DIR})
+target_include_directories(${PROJECT_NAME} PRIVATE 
+    ${INCLUDE_DIR} 
+    ${THIRD_PARTY_DIR}
+    ${INCLUDE_DIR}/UI  
+    ${INCLUDE_DIR}/Core 
+)
+
+target_link_directories(${PROJECT_NAME} PRIVATE 
+    ${SOURCE_DIR} 
+    ${THIRD_PARTY_DIR}
+    ${SOURCE_DIR}/UI
+    ${SOURCE_DIR}/Core  
+)
 
 # Link SDL3
 find_package(SDL3 CONFIG REQUIRED) 
@@ -36,7 +47,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE imgui::imgui)
 find_package(implot CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE implot::implot)
 
-# Automatically copy runtime libraries (DLLs, SOs, etc.)
+# Automatically copy runtime libraries (DLLs)
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         $<TARGET_RUNTIME_DLLS:${PROJECT_NAME}>

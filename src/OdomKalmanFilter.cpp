@@ -1,0 +1,123 @@
+#define _USE_MATH_DEFINES
+#include <math.h>
+#include "OdomKalmanFilter.hpp"
+
+OdomKalmanFilter::OdomKalmanFilter(Eigen::Vector3d initialState, double processNoise, double measurementNoise)
+{
+    x = initialState;
+    this->processNoise = processNoise;
+    this->measurementNoise = measurementNoise;
+
+    P.setIdentity();
+    Q.setIdentity();
+    R.setIdentity();
+
+    Q *= processNoise;
+    R *= measurementNoise;
+}
+
+void OdomKalmanFilter::setAnchors(const Eigen::Vector2d& anchorA, const Eigen::Vector2d& anchorB) 
+{
+    this->anchorA = anchorA;
+    this->anchorB = anchorB;
+}
+
+// Take in wheel encoder data and dt
+void OdomKalmanFilter::predict(const Eigen::Vector2d& U, double dt)
+{
+    Q.setIdentity();
+    Q *= processNoise;
+
+    const float chassisWidth = 0.173f;
+    const float wheelRadius = 0.03f;
+
+    float dL = static_cast<float>((U[0] - encoderA) * wheelRadius); //New encoder - old encoder value
+    float dR = static_cast<float>((U[1] - encoderB) * wheelRadius);
+    encoderA = static_cast<float>(U[0]);
+    encoderB = static_cast<float>(U[1]);
+
+    // nonlinear motion model (differential drive)
+    float d = (dL + dR) / 2.0f;
+    float dTheta = (dR - dL) / (chassisWidth);
+    
+    x.x() += d * cos(x.z() + dTheta / 2.0f);
+    x.y() += d * sin(x.z() + dTheta / 2.0f);
+    x.z() += dTheta;
+
+    // Jacobian of the motion model
+    F << 1, 0, -d * sin(dTheta),
+         0, 1,  d * cos(dTheta),
+         0, 0,  1;
+
+    P = F * P * F.transpose() + Q;
+}
+
+void OdomKalmanFilter::update(const Eigen::Vector2d& measurement,  double dt) 
+{
+    R.setIdentity();
+    R *= measurementNoise;
+
+    // current state (x, y, theta)
+    double x_pos = x(0);  // Position x
+    double y_pos = x(1);  // Position y
+    double theta = x(2);  // angle
+
+    // distances to the anchors 
+    double r_a = std::sqrt(std::pow(x_pos - anchorA(0), 2) + std::pow(y_pos - anchorA(1), 2));
+    double r_b = std::sqrt(std::pow(x_pos - anchorB(0), 2) + std::pow(y_pos - anchorB(1), 2));
+
+    // partial derivatives for r_a and r_b wrt x and y
+    double d_rA_dx = (x_pos - anchorA(0)) / r_a;
+    double d_rA_dy = (y_pos - anchorA(1)) / r_a;
+    double d_rB_dx = (x_pos - anchorB(0)) / r_b;
+    double d_rB_dy = (y_pos - anchorB(1)) / r_b;
+
+    // Jacobian matrix H
+    H << d_rA_dx, d_rA_dy, 0,
+         d_rB_dx, d_rB_dy, 0;
+
+    // Kalman gain
+    K = P * H.transpose() * (H * P * H.transpose() + R).inverse();
+
+    // State update
+    x = x + K * (measurement - h(x));
+
+    // Covariance update
+    P = (Eigen::MatrixXd::Identity(3, 3) - K * H) * P;
+}
+
+void OdomKalmanFilter::setPoseEstimate(Eigen::Vector3d initialState)
+{
+    x = initialState;
+}
+
+void OdomKalmanFilter::render() 
+{
+    Eigen::Matrix2d covariance = P.block<2,2>(0, 0); // 2x2 part of the covariance matrix for x and y
+    Eigen::EigenSolver<Eigen::Matrix2d> solver(covariance);
+    Eigen::Vector2d eigenvalues = solver.eigenvalues().real();
+    Eigen::Matrix2d eigenvectors = solver.eigenvectors().real();
+
+    double std_dev_x = std::sqrt(eigenvalues(0)); // Standard deviation for the x-axis
+    double std_dev_y = std::sqrt(eigenvalues(1)); // Standard deviation for the y-axis
+
+    // rotation of the ellipse from first eigenvector
+    double angle = std::atan2(eigenvectors(1, 0), eigenvectors(0, 0));
+
+    // Use standard deviations as the ellipse size
+    double ellipse_width = 2 * std_dev_x;  
+    double ellipse_height = 2 * std_dev_y; 
+
+    ViewPort::GetInstance().RenderTexture(ViewPort::GetInstance().circleTexture, x.head(2), {ellipse_width, ellipse_height}, -angle, YELLOW, 50);
+    ViewPort::GetInstance().RenderTexture(ViewPort::GetInstance().robotTexture, x.head(2), {.2, .2}, -x.z() + M_PI_2, YELLOW, 200);
+}
+
+Eigen::Vector2d OdomKalmanFilter::h(const Eigen::Vector3d& state) 
+{
+    double r_a = sqrt((state(0) - anchorA(0)) * (state(0) - anchorA(0)) + (state(1) - anchorA(1)) * (state(1) - anchorA(1)));
+    double r_b = sqrt((state(0) - anchorB(0)) * (state(0) - anchorB(0)) + (state(1) - anchorB(1)) * (state(1) - anchorB(1)));
+
+    Eigen::Vector2d measurement;
+    measurement << r_a, r_b;
+    return measurement;
+}

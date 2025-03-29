@@ -1,6 +1,7 @@
+#include "Core/RendererBackend.hpp"
 #include "RendererBackend.hpp"
 
-RendererBackend::RendererBackend()
+RendererBackend::RendererBackend(unsigned int windowSizeX, unsigned int windowSizeY)
 {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -12,7 +13,9 @@ RendererBackend::RendererBackend()
     Io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
     SDL_Init(SDL_INIT_VIDEO);
-    if (!SDL_CreateWindowAndRenderer(nullptr, DEFAULT_WINDOW_SIZE_X, DEFAULT_WINDOW_SIZE_Y, SDL_WINDOW_RESIZABLE, &m_Window, &m_sdlRenderer))
+    if (!SDL_CreateWindowAndRenderer(nullptr, 
+        windowSizeX, windowSizeY, SDL_WINDOW_RESIZABLE, 
+        &m_Window, &m_sdlRenderer))
     {
         SDL_Log("%S", SDL_GetError());
     }
@@ -67,6 +70,16 @@ void RendererBackend::ProcessEvent(SDL_Event* event)
     }
 }
 
+SDL_Renderer* RendererBackend::GetSdlRenderer()
+{
+    return m_sdlRenderer;
+}
+
+SDL_Window* RendererBackend::GetSdlWindow()
+{
+    return m_Window;
+}
+
 RendererBackend::~RendererBackend()
 {
     ImGui_ImplSDLRenderer3_Shutdown();
@@ -78,3 +91,4 @@ RendererBackend::~RendererBackend()
     SDL_DestroyWindow(m_Window);
     SDL_Quit();
 }
+
