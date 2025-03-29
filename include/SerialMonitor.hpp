@@ -22,7 +22,6 @@ public:
 public:
     SerialMonitor(SerialInterface& serialCom) : serialCom(serialCom)
     {
-        
         findAvailablePorts();
     }
 
@@ -115,7 +114,7 @@ public:
                     AncPacket.header, 
                     AncPacket.packetID, 
                     AncPacket.anchorID, 
-                    abs(AncPacket.range),
+                    AncPacket.range,
                     AncPacket.rxPower                    
                 );
 
@@ -146,7 +145,7 @@ public:
             {
                 for (auto line : historyBuffer)
                 {
-                    ImGui::TextWrapped("%s", line.c_str());
+                    ImGui::Text("%s", line.c_str());
                 }
                 ImGui::SetScrollHereY(0.0f);
             }

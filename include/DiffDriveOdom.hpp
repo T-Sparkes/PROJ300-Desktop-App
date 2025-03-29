@@ -68,7 +68,7 @@ inline Eigen::Vector2d wheelVelFromGoal(double x, double y, double theta, double
 
     double omega = 1.0 * error;
 
-    double vForwards = 0.05;  
+    double vForwards = 0.1;  
     double vL = vForwards - (width / 2.0) * omega;
     double vR = vForwards + (width / 2.0) * omega;
 

@@ -11,6 +11,7 @@
 #include "ConstPosKalmanFilter.hpp"
 #include "UI/UIwindow.hpp"
 #include "UI/ConfigWindow.hpp"
+#include "OdomKalmanFilter.hpp"
 
 #define FPS_BUFFER_SIZE 500
 
@@ -23,6 +24,12 @@
 #define KF_DEFAULT_POS {0, -1}
 #define KF_DEFAULT_Q 1e-6
 #define KF_DEFAULT_R 0.1
+
+/*
+    ~~~ NOTES ~~~
+    1. Corrupt serial data containing large numbers will freeze program
+    2. Need to add kalman filter updates only when new Data is received
+*/
 
 class Application : public BaseApplication
 {
@@ -38,6 +45,7 @@ private:
     DiffDriveOdom m_Odom;
     Bilateration m_biLat;
     ConstPosKalmanFilter m_KalmanFilter;
+    OdomKalmanFilter m_OdomKalmanFilter;
 
     std::shared_ptr<InfoBar> m_infoBar;
     std::shared_ptr<SerialMonitor> m_SerialMonitor;
