@@ -7,7 +7,7 @@
 #include "SerialMonitor.hpp"
 #include "DiffDriveOdom.hpp"
 #include "BotControlWindow.hpp"
-#include "Bilateration.hpp"
+#include "LandmarkContainer.hpp"
 #include "ConstPosKalmanFilter.hpp"
 #include "UI/UIwindow.hpp"
 #include "UI/ConfigWindow.hpp"
@@ -18,12 +18,12 @@
 #define DEFAULT_GRID_SIZE 4
 #define DEFAULT_VIEWPORT_ZOOM 250
 
-#define DEFAULT_ANCHOR_A_POS {-1, 0}
-#define DEFAULT_ANCHOR_B_POS {1, 0}
+#define DEFAULT_LANDMARK_A_POS {-0.65, 0}
+#define DEFAULT_LANDMARK_B_POS {0.65, 0}
 
-#define KF_DEFAULT_POS {0, -1}
-#define KF_DEFAULT_Q 1e-6
-#define KF_DEFAULT_R 0.1
+#define KF_DEFAULT_POS {0, 0, 0}
+#define KF_DEFAULT_Q 10e-12 //10e-12
+#define KF_DEFAULT_R 0.5
 
 /*
     ~~~ NOTES ~~~
@@ -42,10 +42,8 @@ private:
 
     GridRenderer m_WorldGrid;
     SerialInterface m_RobotSerial;
-    DiffDriveOdom m_Odom;
-    Bilateration m_biLat;
-    ConstPosKalmanFilter m_KalmanFilter;
-    OdomKalmanFilter m_OdomKalmanFilter;
+    LandmarkContainer m_Landmarks;
+    OdomKalmanFilter m_KalmanFilter;
 
     std::shared_ptr<InfoBar> m_infoBar;
     std::shared_ptr<SerialMonitor> m_SerialMonitor;

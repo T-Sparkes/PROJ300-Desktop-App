@@ -66,7 +66,7 @@ inline Eigen::Vector2d wheelVelFromGoal(double x, double y, double theta, double
     while (error > M_PI) error -= 2 * M_PI;
     while (error < -M_PI) error += 2 * M_PI;
 
-    double omega = 1.0 * error;
+    double omega = 1 * error;
 
     double vForwards = 0.1;  
     double vL = vForwards - (width / 2.0) * omega;

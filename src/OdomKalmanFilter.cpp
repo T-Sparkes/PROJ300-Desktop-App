@@ -27,6 +27,7 @@ void OdomKalmanFilter::predict(const Eigen::Vector2d& U, double dt)
 {
     Q.setIdentity();
     Q *= processNoise;
+    Q(Q.rows() - 1, Q.cols() - 1) = 1e-6;
 
     const float chassisWidth = 0.173f;
     const float wheelRadius = 0.03f;
@@ -45,8 +46,8 @@ void OdomKalmanFilter::predict(const Eigen::Vector2d& U, double dt)
     x.z() += dTheta;
 
     // Jacobian of the motion model
-    F << 1, 0, -d * sin(dTheta),
-         0, 1,  d * cos(dTheta),
+    F << 1, 0, -d * sin(x.z()),
+         0, 1,  d * cos(x.z()),
          0, 0,  1;
 
     P = F * P * F.transpose() + Q;
@@ -91,27 +92,6 @@ void OdomKalmanFilter::setPoseEstimate(Eigen::Vector3d initialState)
     x = initialState;
 }
 
-void OdomKalmanFilter::render() 
-{
-    Eigen::Matrix2d covariance = P.block<2,2>(0, 0); // 2x2 part of the covariance matrix for x and y
-    Eigen::EigenSolver<Eigen::Matrix2d> solver(covariance);
-    Eigen::Vector2d eigenvalues = solver.eigenvalues().real();
-    Eigen::Matrix2d eigenvectors = solver.eigenvectors().real();
-
-    double std_dev_x = std::sqrt(eigenvalues(0)); // Standard deviation for the x-axis
-    double std_dev_y = std::sqrt(eigenvalues(1)); // Standard deviation for the y-axis
-
-    // rotation of the ellipse from first eigenvector
-    double angle = std::atan2(eigenvectors(1, 0), eigenvectors(0, 0));
-
-    // Use standard deviations as the ellipse size
-    double ellipse_width = 2 * std_dev_x;  
-    double ellipse_height = 2 * std_dev_y; 
-
-    ViewPort::GetInstance().RenderTexture(ViewPort::GetInstance().circleTexture, x.head(2), {ellipse_width, ellipse_height}, -angle, YELLOW, 50);
-    ViewPort::GetInstance().RenderTexture(ViewPort::GetInstance().robotTexture, x.head(2), {.2, .2}, -x.z() + M_PI_2, YELLOW, 200);
-}
-
 Eigen::Vector2d OdomKalmanFilter::h(const Eigen::Vector3d& state) 
 {
     double r_a = sqrt((state(0) - anchorA(0)) * (state(0) - anchorA(0)) + (state(1) - anchorA(1)) * (state(1) - anchorA(1)));
@@ -120,4 +100,36 @@ Eigen::Vector2d OdomKalmanFilter::h(const Eigen::Vector3d& state)
     Eigen::Vector2d measurement;
     measurement << r_a, r_b;
     return measurement;
+}
+
+void OdomKalmanFilter::render() 
+{
+    Eigen::Matrix2d covariance = P.block<2,2>(0, 0); // 2x2 part of the covariance matrix for x and y
+    
+    // Validate covariance matrix
+    if (covariance.allFinite()) 
+    {
+        Eigen::EigenSolver<Eigen::Matrix2d> solver(covariance);
+
+        Eigen::Vector2d eigenvalues = solver.eigenvalues().real();
+        Eigen::Matrix2d eigenvectors = solver.eigenvectors().real();
+
+        double std_dev_x = std::sqrt(eigenvalues(0)); // Standard deviation for the x-axis
+        double std_dev_y = std::sqrt(eigenvalues(1)); // Standard deviation for the y-axis
+
+        // rotation of the ellipse from first eigenvector
+        double angle = std::atan2(eigenvectors(1, 0), eigenvectors(0, 0));
+        
+        // Use standard deviations as the ellipse size
+        double ellipse_width = 2 * std_dev_x;  
+        double ellipse_height = 2 * std_dev_y; 
+        ViewPort::GetInstance().RenderTexture(ViewPort::GetInstance().circleTexture, x.head(2), {ellipse_width, ellipse_height}, -angle, YELLOW, 50);
+    }
+
+    else
+    {
+        printf("KALMAN ERROR: Covariance matrix invalid\n");
+    }
+    
+    ViewPort::GetInstance().RenderTexture(ViewPort::GetInstance().robotTexture, x.head(2), {0.173, 0.173}, -x.z() + M_PI_2, WHITE, 255);
 }

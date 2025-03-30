@@ -1,5 +1,6 @@
 
 #include "Application.hpp"
+#include <deque>
 
 Application& Application::GetInstance()
 {
@@ -9,11 +10,10 @@ Application& Application::GetInstance()
 
 Application::Application() : 
     m_WorldGrid({0, 0}, {DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE}), 
-    m_biLat(DEFAULT_ANCHOR_A_POS, DEFAULT_ANCHOR_B_POS), 
-    m_KalmanFilter(KF_DEFAULT_POS, KF_DEFAULT_Q, KF_DEFAULT_R),
-    m_OdomKalmanFilter({0, 0, 0}, 0.25e-6, KF_DEFAULT_R)
+    m_Landmarks(DEFAULT_LANDMARK_A_POS, DEFAULT_LANDMARK_B_POS), 
+    m_KalmanFilter(KF_DEFAULT_POS, KF_DEFAULT_Q, KF_DEFAULT_R)
 {
-    m_ConfigWindow = std::make_shared<ConfigWindow>(m_WorldGrid, m_biLat, m_KalmanFilter);
+    m_ConfigWindow = std::make_shared<ConfigWindow>(m_WorldGrid, m_Landmarks, m_KalmanFilter);
     m_infoBar = std::make_shared<InfoBar>(m_RobotSerial, m_AvgFrameTime);
     m_SerialMonitor = std::make_shared<SerialMonitor>(m_RobotSerial);
     m_ControlPanel = std::make_shared<BotControlWindow>(m_RobotSerial);
@@ -25,8 +25,7 @@ Application::Application() :
 
     viewPort.GetCamera().setScale(DEFAULT_VIEWPORT_ZOOM);
     m_FrameTBuffer = std::make_unique<Buffer<ImPlotPoint>>(FPS_BUFFER_SIZE);
-    m_KalmanFilter.setAnchors(DEFAULT_ANCHOR_A_POS, DEFAULT_ANCHOR_B_POS);
-    m_OdomKalmanFilter.setAnchors(DEFAULT_ANCHOR_A_POS, DEFAULT_ANCHOR_B_POS);
+    m_KalmanFilter.setAnchors(DEFAULT_LANDMARK_A_POS, DEFAULT_LANDMARK_B_POS);
 }
 
 void Application::OnEvent(SDL_Event* event) 
@@ -51,68 +50,63 @@ void Application::OnEvent(SDL_Event* event)
 
 void Application::Update()
 {
-    // Get data from robot
-    //StatusPacket statusData;
-    //AnchorRangePacket rangeData;
-    //EncoderDataPacket encoderData;
-
-    //m_RobotSerial.getPacket(&statusData);
-    //m_RobotSerial.getPacket(&rangeData);
-    //m_RobotSerial.getPacket(&encoderData);
-//
-    //// Temp odom stuff
-    //m_Odom.update(encoderData.encA, encoderData.encB);
     Eigen::Vector2d mousePosWorld = viewPort.GetCamera().transform.inverse() * ViewPort::GetInstance().GetViewPortMousePos();
-//
-    //Eigen::Vector2d wheelVels = wheelVelFromGoal(
-    //    m_Odom.getState().x(), 
-    //    m_Odom.getState().y(), 
-    //    m_Odom.getState().z(), 
-    //    mousePosWorld.x(), 
-    //    mousePosWorld.y()
-    //); // Temp, do a better job of this
-//
-    //m_RobotSerial.SetCommandVel((float)wheelVels.x(), (float)wheelVels.y());
+    static Eigen::Vector2d goal1 = {-0.65, -0.75};
+    static Eigen::Vector2d goal2 = {-0.5, -2};
+    static Eigen::Vector2d goal3 = {0.65, -0.75};
+    static Eigen::Vector2d goal4 = {1.5, -0.75};
+    static Eigen::Vector2d currentGoal = goal1; 
 
-    // Calculate horizontal range if anchor is 75cm above the ground
-    //static float correctedRange = sqrt(pow(m_SerialMonitor->AncPacket.range, 2) - pow(0.75f, 2));
-    //correctedRange = std::max(m_SerialMonitor->AncPacket.range, 0.0f); // Clamp to 0
-    //correctedRange = std::min(m_SerialMonitor->AncPacket.range, 10.0f); // Clamp to 10m
-
-    static Eigen::Vector2d goal1 = {-1, -1};
-    static Eigen::Vector2d goal2 = {-0.6, -1.5};
-    static Eigen::Vector2d goal3 = {0.2, -1};
-    static Eigen::Vector2d currentGoal = goal1;
-
-    if ((m_OdomKalmanFilter.x.head(2) - currentGoal).norm() < 0.1)
+    if ((m_KalmanFilter.x.head(2) - currentGoal).norm() < 0.1)
     {
         if (currentGoal == goal1) currentGoal = goal2;
         else if (currentGoal == goal2) currentGoal = goal3;
-        else if (currentGoal == goal3) currentGoal = goal1;         
+        else if (currentGoal == goal3) currentGoal = goal4;
+        else if (currentGoal == goal4) currentGoal = goal1;              
     }
-    
-    m_OdomKalmanFilter.predict({m_SerialMonitor->EncPacket.encA, m_SerialMonitor->EncPacket.encB}, ImGui::GetIO().DeltaTime);
 
     // Update bilateration visualisation
-    if (m_SerialMonitor->AncPacket.anchorID == 'A' && m_SerialMonitor->AncPacket.range < 1e6)
+    if ((m_SerialMonitor->AncPacket.anchorID == 'A') && (m_SerialMonitor->AncPacket.range) < 10.0f && (m_SerialMonitor->AncPacket.range) > 0.0f)
     {   
-        m_biLat.updateRange(m_SerialMonitor->AncPacket.range * 0.75f + 0.375f, m_biLat.rangeB);
+        // Calculate horizontal range if anchor is 75cm above the ground
+        float correctedRange = sqrtf(powf(m_SerialMonitor->AncPacket.range * LANDMARK_A_CALIBRATION, 2) - powf(0.75f, 2));
+        if (correctedRange > 0 && correctedRange < 10)
+        {
+            m_Landmarks.updateRange(correctedRange, m_Landmarks.rangeB);
+        }
     }
 
-    else if (m_SerialMonitor->AncPacket.anchorID == 'B' && m_SerialMonitor->AncPacket.range < 1e6)
-    {
-        m_biLat.updateRange(m_biLat.rangeA, m_SerialMonitor->AncPacket.range);
+    else if ((m_SerialMonitor->AncPacket.anchorID == 'B'))
+    {   
+        // Calculate horizontal range if anchor is 75cm above the ground
+        float correctedRange = sqrtf(powf(m_SerialMonitor->AncPacket.range * LANDMARK_B_CALIBRATION, 2) - powf(0.75f, 2));
+        if (correctedRange > 0 && correctedRange < 10)
+        {
+            m_Landmarks.updateRange(m_Landmarks.rangeA, correctedRange);
+        }
     }
 
     // Update Kalman filter
-    m_KalmanFilter.predict({0, 0}, 0.1);
-    m_KalmanFilter.update({m_biLat.getAnchorRange('A') , m_biLat.getAnchorRange('B')}, 0.1);
+    m_KalmanFilter.setAnchors(m_Landmarks.getLandmarkPos('A'), m_Landmarks.getLandmarkPos('B'));
+    m_KalmanFilter.predict({m_SerialMonitor->EncPacket.encA, m_SerialMonitor->EncPacket.encB}, ImGui::GetIO().DeltaTime);
 
-    m_OdomKalmanFilter.setAnchors(m_biLat.getAnchorPos('A'), m_biLat.getAnchorPos('B'));
-    m_OdomKalmanFilter.update({m_biLat.getAnchorRange('A') , m_biLat.getAnchorRange('B')}, ImGui::GetIO().DeltaTime);
+    static double lastRangeA = 0;    
+    static double lastRangeB = 0;
 
-    Eigen::Vector2d wheelVels = wheelVelFromGoal(m_OdomKalmanFilter.x.x(), m_OdomKalmanFilter.x.y(), m_OdomKalmanFilter.x.z(), currentGoal.x(), currentGoal.y());
-    //m_RobotSerial.SetCommandVel(wheelVels[0], wheelVels[1]);
+    if ((m_Landmarks.getLandmarkRange('A') != lastRangeA) && (m_Landmarks.getLandmarkRange('B') != lastRangeB))
+    {
+        m_KalmanFilter.update({m_Landmarks.getLandmarkRange('A') , m_Landmarks.getLandmarkRange('B')}, ImGui::GetIO().DeltaTime);
+        lastRangeA = m_Landmarks.getLandmarkRange('A');    
+        lastRangeB = m_Landmarks.getLandmarkRange('B');    
+    }
+
+    Eigen::Vector2d wheelVels = wheelVelFromGoal(m_KalmanFilter.x.x(), m_KalmanFilter.x.y(), m_KalmanFilter.x.z(), currentGoal.x(), currentGoal.y());
+
+    if (m_ControlPanel->controlMode == WAYPOINT)
+    {
+        m_RobotSerial.SetCommandVel(static_cast<float>(wheelVels[0]), static_cast<float>(wheelVels[1]));
+    }
+    
 
     // Update UI
     GraphWindow();
@@ -141,7 +135,7 @@ void Application::ViewPortWindow()
 
             if (ImGui::IsKeyDown(ImGuiKey_LeftShift) && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
             {
-                m_OdomKalmanFilter.setPoseEstimate({mousePosWorld.x(), mousePosWorld.y(), 0});
+                m_KalmanFilter.setPoseEstimate({mousePosWorld.x(), mousePosWorld.y(), 0});
             }
             
         }
