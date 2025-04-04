@@ -58,6 +58,5 @@ private:
     void OnEvent(SDL_Event *event) override;
     void Update() override;
     void ViewPortWindow();
-    //void GraphWindow();
     void CalcFrameTime();
 };

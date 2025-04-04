@@ -12,8 +12,8 @@ public:
     {
         while(appState == RUN)
         {
-            this->ProcessEvents();
             m_RendererBackend.StartFrame();
+            this->ProcessEvents();
             this->Update();
             viewPort.RenderViewport();
             m_RendererBackend.EndFrame();
@@ -49,6 +49,8 @@ protected:
             this->OnEvent(&event);
             eventCount++;
         }
+        this->OnEvent(nullptr); // Final event for ImGui Io to update
+        eventCount = 0;
     }
 
     Eigen::Vector2d ImToEigen(ImVec2 imVec)

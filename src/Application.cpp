@@ -61,7 +61,7 @@ void Application::Update()
         else if (currentGoal == goal4) currentGoal = goal1;              
     }
 
-    // Update bilateration visualisation
+    // Update Landmark visualisation
     if ((m_SerialMonitor->AncPacket.anchorID == 'A') && (m_SerialMonitor->AncPacket.range) < 10.0f && (m_SerialMonitor->AncPacket.range) > 0.0f)
     {   
         // Calculate horizontal range if anchor is 75cm above the ground
@@ -104,6 +104,7 @@ void Application::Update()
         m_RobotSerial.SetCommandVel(static_cast<float>(wheelVels[0]), static_cast<float>(wheelVels[1]));
     }
 
+    // Update Graphs with Kalman data
     static Uint64 lastGraphSample = SDL_GetTicks();
     if ((SDL_GetTicks() - lastGraphSample) > 20)
     {
@@ -117,12 +118,8 @@ void Application::Update()
         lastGraphSample = SDL_GetTicks();
     }
 
-    static Uint64 lastTrailDraw = SDL_GetTicks();
-    static std::vector<Eigen::Vector2d> posBuffer;
-
     // Update UI
     ViewPortWindow();
-    
     for (auto& window : m_UIwindows)
     {
         window->OnUpdate();
@@ -139,13 +136,13 @@ void Application::ViewPortWindow()
         {
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Middle)) viewPort.GetCamera().setPanStart(mousePosWorld);
             if (ImGui::IsMouseDragging(ImGuiMouseButton_Middle)) viewPort.GetCamera().panCamera(mousePosWorld);
+
             if (abs(ImGui::GetIO().MouseWheel) > 0) viewPort.GetCamera().updateZoom(mousePosWorld, ImGui::GetIO().MouseWheel);
 
             if (ImGui::IsKeyDown(ImGuiKey_LeftShift) && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
             {
                 m_KalmanFilter.setPoseEstimate({mousePosWorld.x(), mousePosWorld.y(), 0});
-            }
-            
+            }  
         }
     }
     viewPort.ViewPortEnd();
