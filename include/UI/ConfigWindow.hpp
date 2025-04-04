@@ -4,8 +4,8 @@
 #include "Core/ViewPort.hpp"
 #include "UI/UIwindow.hpp"
 #include "WorldGrid.hpp"
-#include "LandmarkContainer.hpp"
-#include "OdomKalmanFilter.hpp"
+#include "Localization/LandmarkContainer.hpp"
+#include "Localization/OdomKalmanFilter.hpp"
 
 class ConfigWindow : public UIwindow
 {

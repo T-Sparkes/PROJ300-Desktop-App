@@ -1,18 +1,23 @@
 #pragma once
+
 #include "Core/BaseApplication.hpp"
+
 #include "UI/InfoBar.hpp"
+#include "UI/BotControlWindow.hpp"
+#include "UI/UIwindow.hpp"
+#include "UI/ConfigWindow.hpp"
+#include "UI/GraphWindow.hpp"
+#include "UI/SerialMonitor.hpp"
+
+#include "Localization/DiffDriveOdom.hpp"
+#include "Localization/LandmarkContainer.hpp"
+#include "Localization/ConstPosKalmanFilter.hpp"
+#include "Localization/OdomKalmanFilter.hpp"
+
 #include "WorldGrid.hpp"
 #include "Buffer.hpp"
 #include "SerialInterface.hpp"
-#include "SerialMonitor.hpp"
-#include "DiffDriveOdom.hpp"
-#include "BotControlWindow.hpp"
-#include "LandmarkContainer.hpp"
-#include "ConstPosKalmanFilter.hpp"
-#include "UI/UIwindow.hpp"
-#include "UI/ConfigWindow.hpp"
-#include "OdomKalmanFilter.hpp"
-#include "UI/GraphWindow.hpp"
+
 
 #define FPS_BUFFER_SIZE 250
 
@@ -29,9 +34,9 @@
 /*
     ~~~ NOTES ~~~
     1. Corrupt serial data containing large numbers will freeze program
-    2. Need to add kalman filter updates only when new Data is received
+    2. Need to add kalman filter updates only when new Data is received, DONE, using SDL events
     3. Need to add proper waypoint navigation
-    4. Serial interface needs observer pattern to update UI windows
+    4. Serial interface needs observer pattern to update UI windows: DONE, used sdl events instead
 */
 
 class Application : public BaseApplication 
@@ -43,11 +48,13 @@ private:
     double m_AvgFrameTime;
     Buffer<ImPlotPoint> m_FrameTBuffer;
 
+    // These render in the order they are declared
     GridRenderer m_WorldGrid;
     SerialInterface m_RobotSerial;
     LandmarkContainer m_Landmarks;
     OdomKalmanFilter m_KalmanFilter;
 
+    // UI windows
     std::shared_ptr<InfoBar> m_infoBar;
     std::shared_ptr<SerialMonitor> m_SerialMonitor;
     std::shared_ptr<BotControlWindow> m_ControlPanel;
@@ -61,5 +68,4 @@ private:
     void Update() override;
     void m_ViewPortWindow();
     void m_CalcFrameTime();
-    void m_NewLandmarkData(AnchorRangePacket *packet);
 };

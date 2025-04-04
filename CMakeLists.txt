@@ -21,14 +21,16 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${INCLUDE_DIR} 
     ${THIRD_PARTY_DIR}
     ${INCLUDE_DIR}/UI  
-    ${INCLUDE_DIR}/Core 
+    ${INCLUDE_DIR}/Core
+    ${INCLUDE_DIR}/Localization  
 )
 
 target_link_directories(${PROJECT_NAME} PRIVATE 
     ${SOURCE_DIR} 
     ${THIRD_PARTY_DIR}
     ${SOURCE_DIR}/UI
-    ${SOURCE_DIR}/Core  
+    ${SOURCE_DIR}/Core
+    ${SOURCE_DIR}/Localization  
 )
 
 # Link SDL3
