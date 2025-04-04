@@ -27,7 +27,7 @@ void OdomKalmanFilter::predict(const Eigen::Vector2d& U, double dt)
 {
     Q.setIdentity();
     Q *= processNoise;
-    Q(Q.rows() - 1, Q.cols() - 1) = 1e-6;
+    Q(Q.rows() - 1, Q.cols() - 1) = 1e-6; // 1e-6
 
     const float chassisWidth = 0.173f;
     const float wheelRadius = 0.03f;
@@ -58,10 +58,10 @@ void OdomKalmanFilter::update(const Eigen::Vector2d& measurement,  double dt)
     R.setIdentity();
     R *= measurementNoise;
 
-    // current state (x, y, theta)
-    double x_pos = x(0);  // Position x
-    double y_pos = x(1);  // Position y
-    double theta = x(2);  // angle
+    // current state
+    double x_pos = x(0);  
+    double y_pos = x(1); 
+    double theta = x(2); 
 
     // distances to the anchors 
     double r_a = std::sqrt(std::pow(x_pos - anchorA(0), 2) + std::pow(y_pos - anchorA(1), 2));
@@ -77,7 +77,7 @@ void OdomKalmanFilter::update(const Eigen::Vector2d& measurement,  double dt)
     H << d_rA_dx, d_rA_dy, 0,
          d_rB_dx, d_rB_dy, 0;
 
-    // Kalman gain
+    // Kalman gain           
     K = P * H.transpose() * (H * P * H.transpose() + R).inverse();
 
     // State update

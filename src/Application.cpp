@@ -1,6 +1,5 @@
 
 #include "Application.hpp"
-#include <deque>
 
 Application& Application::GetInstance()
 {
@@ -11,30 +10,27 @@ Application& Application::GetInstance()
 Application::Application() : 
     m_WorldGrid({0, 0}, {DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE}), 
     m_Landmarks(DEFAULT_LANDMARK_A_POS, DEFAULT_LANDMARK_B_POS), 
-    m_KalmanFilter(KF_DEFAULT_POS, KF_DEFAULT_Q, KF_DEFAULT_R)
+    m_KalmanFilter(KF_DEFAULT_POS, KF_DEFAULT_Q, KF_DEFAULT_R),
+    m_FrameTBuffer(FPS_BUFFER_SIZE)
 {
-    m_ConfigWindow = std::make_shared<ConfigWindow>(m_WorldGrid, m_Landmarks, m_KalmanFilter);
     m_infoBar = std::make_shared<InfoBar>(m_RobotSerial, m_AvgFrameTime);
     m_SerialMonitor = std::make_shared<SerialMonitor>(m_RobotSerial);
     m_ControlPanel = std::make_shared<BotControlWindow>(m_RobotSerial);
+    m_GraphWindow = std::make_shared<GraphWindow>(m_FrameTBuffer, m_AvgFrameTime);
+    m_ConfigWindow = std::make_shared<ConfigWindow>(m_WorldGrid, m_Landmarks, m_KalmanFilter);
 
     m_UIwindows.push_back(m_ConfigWindow);
     m_UIwindows.push_back(m_SerialMonitor);
     m_UIwindows.push_back(m_ControlPanel);
     m_UIwindows.push_back(m_infoBar);
+    m_UIwindows.push_back(m_GraphWindow);
 
     viewPort.GetCamera().setScale(DEFAULT_VIEWPORT_ZOOM);
-    m_FrameTBuffer = std::make_unique<Buffer<ImPlotPoint>>(FPS_BUFFER_SIZE);
     m_KalmanFilter.setAnchors(DEFAULT_LANDMARK_A_POS, DEFAULT_LANDMARK_B_POS);
 }
 
 void Application::OnEvent(SDL_Event* event) 
 {
-    if (ImGui::IsKeyDown(ImGuiKey_Enter) && ImGui::IsKeyDown(ImGuiKey_LeftAlt))
-    {
-        appState = RESTART; // Doesnt work anymore :(
-    }
-
     if (ImGui::IsKeyDown(ImGuiKey_Escape))
     {
         appState = QUIT;
@@ -73,6 +69,7 @@ void Application::Update()
         if (correctedRange > 0 && correctedRange < 10)
         {
             m_Landmarks.updateRange(correctedRange, m_Landmarks.rangeB);
+            
         }
     }
 
@@ -106,19 +103,30 @@ void Application::Update()
     {
         m_RobotSerial.SetCommandVel(static_cast<float>(wheelVels[0]), static_cast<float>(wheelVels[1]));
     }
-    
+
+    static Uint64 lastGraphSample = SDL_GetTicks();
+    if ((SDL_GetTicks() - lastGraphSample) > 20)
+    {
+        double kRangeA = (m_KalmanFilter.x.head(2) - m_Landmarks.getLandmarkPos('A')).norm();
+        double kRangeB = (m_KalmanFilter.x.head(2) - m_Landmarks.getLandmarkPos('B')).norm();
+
+        m_GraphWindow->addRangeData({m_Landmarks.getLandmarkRange('A'), m_Landmarks.getLandmarkRange('B')}, {kRangeA, kRangeB});
+        m_GraphWindow->addKalmanData(m_KalmanFilter.K, m_KalmanFilter.P);
+
+        CalcFrameTime();
+        lastGraphSample = SDL_GetTicks();
+    }
+
+    static Uint64 lastTrailDraw = SDL_GetTicks();
+    static std::vector<Eigen::Vector2d> posBuffer;
 
     // Update UI
-    GraphWindow();
     ViewPortWindow();
-
+    
     for (auto& window : m_UIwindows)
     {
         window->OnUpdate();
     }
-
-    // Self explanatory really
-    CalcFrameTime();
 }
 
 void Application::ViewPortWindow()
@@ -143,31 +151,16 @@ void Application::ViewPortWindow()
     viewPort.ViewPortEnd();
 }
 
-void Application::GraphWindow()
-{
-    ImGui::Begin("Graphs");
-    {
-        if (ImGui::CollapsingHeader("Frametime Graph##Header", ImGuiTreeNodeFlags_DefaultOpen) && ImPlot::BeginPlot("Frametime##graph")) 
-        {
-            ImPlot::SetupAxes("Time (s)", "Frametime (ms)", ImPlotAxisFlags_AutoFit);
-            ImPlot::SetupAxisLimits(ImAxis_Y1, m_AvgFrameTime - 10.0f, m_AvgFrameTime + 10.0f, ImPlotCond_Always);
-            ImPlot::PlotLine("##fpsline", &m_FrameTBuffer->data()[0][0], &m_FrameTBuffer->data()[0][1], (int)m_FrameTBuffer->size(), 0, 0, sizeof(m_FrameTBuffer->data()[0]));
-            ImPlot::EndPlot();
-        }
-    }
-    ImGui::End();
-}
-
 void Application::CalcFrameTime()
 {
     m_AvgFrameTime = 0;
-    m_FrameTBuffer->addData({(float)SDL_GetTicks() / 1000.0f, ImGui::GetIO().DeltaTime * 1000.0f});
+    m_FrameTBuffer.addData({(float)SDL_GetTicks() / 1000.0f, ImGui::GetIO().DeltaTime * 1000.0f});
     
-    for (int i = 0; i < m_FrameTBuffer->size(); i++)
+    for (int i = 0; i < m_FrameTBuffer.size(); i++)
     {
-        m_AvgFrameTime += m_FrameTBuffer->data()[i][1];
+        m_AvgFrameTime += m_FrameTBuffer.data()[i][1];
     }
-    m_AvgFrameTime /= m_FrameTBuffer->size();
+    m_AvgFrameTime /= m_FrameTBuffer.size();
 }
 
 
