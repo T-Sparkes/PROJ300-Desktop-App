@@ -30,6 +30,7 @@ public:
     LandmarkContainer() = default;
     LandmarkContainer(Eigen::Vector2d m_LandmarkPosA_, Eigen::Vector2d LandmarkPosB_);
 
+    void OnNewPacket(AnchorRangePacket *packet);
     void calculatePos(bool printDebug = false);
     void updateRange(double _rangeA, double _rangeB);
     void simulateRange(Eigen::Vector2d realPosition, double sttdev);
@@ -116,6 +117,28 @@ inline void LandmarkContainer::updateRange(double _rangeA, double _rangeB)
     rangeB = _rangeB;
 }
 
+inline void LandmarkContainer::OnNewPacket(AnchorRangePacket *packet)
+{
+    if (packet->anchorID == 'A')
+    {   
+        // Calculate horizontal range if anchor is 75cm above the ground
+        float correctedRange = sqrtf(powf(packet->range * LANDMARK_A_CALIBRATION, 2) - powf(0.75f, 2));
+        if (correctedRange > 0 && correctedRange < 10)
+        {
+            rangeA = correctedRange;
+        }
+    }
+
+    else if (packet->anchorID == 'B')
+    {   
+        // Calculate horizontal range if anchor is 75cm above the ground
+        float correctedRange = sqrtf(powf(packet->range * LANDMARK_B_CALIBRATION, 2) - powf(0.75f, 2));
+        if (correctedRange > 0 && correctedRange < 10)
+        {
+            rangeB = correctedRange;
+        }
+    }
+}
 inline void LandmarkContainer::calculatePos(bool printDebug)
 {
     double d = sqrt(pow((m_LandmarkPosB.x() - m_LandmarkPosA.x()), 2.0) + pow((m_LandmarkPosB.y() - m_LandmarkPosA.y()), 2.0));

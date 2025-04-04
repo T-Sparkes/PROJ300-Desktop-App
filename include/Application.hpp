@@ -24,12 +24,14 @@
 
 #define KF_DEFAULT_POS {0, 0, 0}
 #define KF_DEFAULT_Q 100e-12 //10e-12 //100e-12
-#define KF_DEFAULT_R 0.5
+#define KF_DEFAULT_R 0.1
 
 /*
     ~~~ NOTES ~~~
     1. Corrupt serial data containing large numbers will freeze program
     2. Need to add kalman filter updates only when new Data is received
+    3. Need to add proper waypoint navigation
+    4. Serial interface needs observer pattern to update UI windows
 */
 
 class Application : public BaseApplication 
@@ -57,6 +59,7 @@ private:
     Application();
     void OnEvent(SDL_Event *event) override;
     void Update() override;
-    void ViewPortWindow();
-    void CalcFrameTime();
+    void m_ViewPortWindow();
+    void m_CalcFrameTime();
+    void m_NewLandmarkData(AnchorRangePacket *packet);
 };

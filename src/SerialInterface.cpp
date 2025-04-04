@@ -1,4 +1,5 @@
 #include "SerialInterface.hpp"
+#include "SDL3/SDL.h"
 
 SerialInterface::SerialInterface()
 {
@@ -86,6 +87,10 @@ void SerialInterface::m_ReadPacket()
             std::lock_guard<std::mutex> lock(m_Mutex);
             memcpy(&m_LatestEncoderPacket, rxBuffer, sizeof(m_LatestEncoderPacket));
             m_EncoderDataReady = true;
+
+            auto* packet = new EncoderDataPacket;
+            memcpy(packet, &m_LatestEncoderPacket, sizeof(EncoderDataPacket));
+            dispatchPacketEvent(packet, SERIAL_ENCODER_EVENT);
         }
 
         else if (rxPacket.header == PACKET_HEADER && rxPacket.packetID == RANGE_PACKET_ID) // Encoder packet
@@ -94,6 +99,10 @@ void SerialInterface::m_ReadPacket()
             std::lock_guard<std::mutex> lock(m_Mutex);
             memcpy(&m_LatestAnchorPacket, rxBuffer, sizeof(m_LatestAnchorPacket));
             m_RangeDataReady = true;
+
+            auto* packet = new AnchorRangePacket;
+            memcpy(packet, &m_LatestAnchorPacket, sizeof(AnchorRangePacket));
+            dispatchPacketEvent(packet, SERIAL_LANDMARK_EVENT);
         }
 
         else if (rxPacket.header == PACKET_HEADER && rxPacket.packetID == STATUS_PACKET_ID) // Encoder packet
@@ -102,6 +111,10 @@ void SerialInterface::m_ReadPacket()
             std::lock_guard<std::mutex> lock(m_Mutex);
             memcpy(&m_LatestStatusPacket, rxBuffer, sizeof(m_LatestStatusPacket));
             m_StatusDataReady = true;
+
+            auto* packet = new StatusPacket;
+            memcpy(packet, &m_LatestStatusPacket, sizeof(StatusPacket));
+            dispatchPacketEvent(packet, SERIAL_STATUS_EVENT);
         }
 
         else 
@@ -110,6 +123,17 @@ void SerialInterface::m_ReadPacket()
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
     }
+}
+
+template <typename PacketType>
+void SerialInterface::dispatchPacketEvent(PacketType* packet, int eventCode)
+{
+    SDL_Event event;
+    event.type = SDL_EVENT_USER;
+    event.user.code = eventCode;
+    event.user.data1 = packet;
+    event.user.data2 = NULL;
+    SDL_PushEvent(&event);
 }
 
 // serial task that runs in a separate thread.

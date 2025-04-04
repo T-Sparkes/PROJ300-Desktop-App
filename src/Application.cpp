@@ -42,6 +42,40 @@ void Application::OnEvent(SDL_Event* event)
         bFullscreen = !bFullscreen;
         SDL_SetWindowFullscreen(RendererBackend::GetInstance().GetSdlWindow(), bFullscreen);
     }
+
+    if (ImGui::IsKeyDown(ImGuiKey_F10))
+    {
+        static bool bVsync = true;
+        bVsync = !bVsync;
+        SDL_SetRenderVSync(RendererBackend::GetInstance().GetSdlRenderer(), bVsync);
+    }
+
+    if (event->type == SDL_EVENT_USER && event->user.code == SERIAL_STATUS_EVENT)
+    {
+        StatusPacket statusData = *reinterpret_cast<StatusPacket*>(event->user.data1);
+        delete event->user.data1; // Free the memory allocated for the packet
+
+        m_SerialMonitor->OnNewStatusPacket(&statusData); 
+    }
+
+    else if (event->type == SDL_EVENT_USER && event->user.code == SERIAL_LANDMARK_EVENT)
+    {
+        AnchorRangePacket landmarkData = *reinterpret_cast<AnchorRangePacket*>(event->user.data1);
+        delete event->user.data1; // Free the memory allocated for the packet
+
+        m_Landmarks.OnNewPacket(&landmarkData);
+        m_SerialMonitor->OnNewLandmarkPacket(&landmarkData);
+        m_KalmanFilter.update({m_Landmarks.getLandmarkRange('A') , m_Landmarks.getLandmarkRange('B')}, ImGui::GetIO().DeltaTime);
+    }
+
+    else if (event->type == SDL_EVENT_USER && event->user.code == SERIAL_ENCODER_EVENT)
+    {
+        EncoderDataPacket encoderData = *reinterpret_cast<EncoderDataPacket*>(event->user.data1);
+        delete event->user.data1; // Free the memory allocated for the packet
+
+        m_SerialMonitor->OnNewEncoderPacket(&encoderData);
+        m_KalmanFilter.predict({encoderData.encA, encoderData.encB}, ImGui::GetIO().DeltaTime);
+    }
 }   
 
 void Application::Update()
@@ -61,47 +95,16 @@ void Application::Update()
         else if (currentGoal == goal4) currentGoal = goal1;              
     }
 
-    // Update Landmark visualisation
-    if ((m_SerialMonitor->AncPacket.anchorID == 'A') && (m_SerialMonitor->AncPacket.range) < 10.0f && (m_SerialMonitor->AncPacket.range) > 0.0f)
-    {   
-        // Calculate horizontal range if anchor is 75cm above the ground
-        float correctedRange = sqrtf(powf(m_SerialMonitor->AncPacket.range * LANDMARK_A_CALIBRATION, 2) - powf(0.75f, 2));
-        if (correctedRange > 0 && correctedRange < 10)
-        {
-            m_Landmarks.updateRange(correctedRange, m_Landmarks.rangeB);
-            
-        }
-    }
-
-    else if ((m_SerialMonitor->AncPacket.anchorID == 'B'))
-    {   
-        // Calculate horizontal range if anchor is 75cm above the ground
-        float correctedRange = sqrtf(powf(m_SerialMonitor->AncPacket.range * LANDMARK_B_CALIBRATION, 2) - powf(0.75f, 2));
-        if (correctedRange > 0 && correctedRange < 10)
-        {
-            m_Landmarks.updateRange(m_Landmarks.rangeA, correctedRange);
-        }
-    }
-
-    // Update Kalman filter
-    m_KalmanFilter.setAnchors(m_Landmarks.getLandmarkPos('A'), m_Landmarks.getLandmarkPos('B'));
-    m_KalmanFilter.predict({m_SerialMonitor->EncPacket.encA, m_SerialMonitor->EncPacket.encB}, ImGui::GetIO().DeltaTime);
-
-    static double lastRangeA = 0;    
-    static double lastRangeB = 0;
-
-    if ((m_Landmarks.getLandmarkRange('A') != lastRangeA) && (m_Landmarks.getLandmarkRange('B') != lastRangeB))
+    // Update Robot Serial with new encoder data
+    static Uint64 lastControl = SDL_GetTicks();
+    if ((SDL_GetTicks() - lastControl) > 20)
     {
-        m_KalmanFilter.update({m_Landmarks.getLandmarkRange('A') , m_Landmarks.getLandmarkRange('B')}, ImGui::GetIO().DeltaTime);
-        lastRangeA = m_Landmarks.getLandmarkRange('A');    
-        lastRangeB = m_Landmarks.getLandmarkRange('B');    
-    }
-
-    Eigen::Vector2d wheelVels = wheelVelFromGoal(m_KalmanFilter.x.x(), m_KalmanFilter.x.y(), m_KalmanFilter.x.z(), currentGoal.x(), currentGoal.y());
-
-    if (m_ControlPanel->controlMode == WAYPOINT)
-    {
-        m_RobotSerial.SetCommandVel(static_cast<float>(wheelVels[0]), static_cast<float>(wheelVels[1]));
+        if (m_ControlPanel->controlMode == WAYPOINT)
+        {
+            Eigen::Vector2d wheelVels = wheelVelFromGoal(m_KalmanFilter.x.x(), m_KalmanFilter.x.y(), m_KalmanFilter.x.z(), currentGoal.x(), currentGoal.y());
+            m_RobotSerial.SetCommandVel(static_cast<float>(wheelVels[0]), static_cast<float>(wheelVels[1]));
+        }
+        lastControl = SDL_GetTicks();
     }
 
     // Update Graphs with Kalman data
@@ -114,19 +117,19 @@ void Application::Update()
         m_GraphWindow->addRangeData({m_Landmarks.getLandmarkRange('A'), m_Landmarks.getLandmarkRange('B')}, {kRangeA, kRangeB});
         m_GraphWindow->addKalmanData(m_KalmanFilter.K, m_KalmanFilter.P);
 
-        CalcFrameTime();
+        m_CalcFrameTime();
         lastGraphSample = SDL_GetTicks();
     }
 
     // Update UI
-    ViewPortWindow();
+    m_ViewPortWindow();
     for (auto& window : m_UIwindows)
     {
         window->OnUpdate();
     }
 }
 
-void Application::ViewPortWindow()
+void Application::m_ViewPortWindow()
 {
     viewPort.ViewPortBegin();
     {
@@ -142,13 +145,14 @@ void Application::ViewPortWindow()
             if (ImGui::IsKeyDown(ImGuiKey_LeftShift) && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
             {
                 m_KalmanFilter.setPoseEstimate({mousePosWorld.x(), mousePosWorld.y(), 0});
+                m_KalmanFilter.P = Eigen::Matrix3d::Identity();
             }  
         }
     }
     viewPort.ViewPortEnd();
 }
 
-void Application::CalcFrameTime()
+void Application::m_CalcFrameTime()
 {
     m_AvgFrameTime = 0;
     m_FrameTBuffer.addData({(float)SDL_GetTicks() / 1000.0f, ImGui::GetIO().DeltaTime * 1000.0f});

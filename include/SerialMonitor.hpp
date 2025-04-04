@@ -9,6 +9,11 @@
 class SerialMonitor : public UIwindow
 {
 public:
+
+    bool newEncoderPacket = false;
+    bool newLandmarkPacket = false;
+    bool newStatPacket = false; 
+
     EncoderDataPacket EncPacket;
     AnchorRangePacket AncPacket;
     StatusPacket statPacket;
@@ -38,6 +43,24 @@ public:
                 serialCom.ClosePort();
             }
         }
+    }
+
+    void OnNewStatusPacket(StatusPacket* packet)
+    {
+        statPacket = *packet;
+        newStatPacket = true;
+    }
+
+    void OnNewLandmarkPacket(AnchorRangePacket* packet)
+    {
+        AncPacket = *packet;
+        newLandmarkPacket = true;
+    }
+
+    void OnNewEncoderPacket(EncoderDataPacket* packet)
+    {
+        EncPacket = *packet;
+        newEncoderPacket = true;
     }
 
     void OnUpdate() override
@@ -86,7 +109,7 @@ public:
 
             ImGui::Separator();
 
-            if (serialCom.getPacket(&EncPacket) && encEnable)
+            if (newEncoderPacket && encEnable)
             {
                 static char lineBuffer[SERIAL_LINE_SIZE_BYTES];
                 sprintf_s(
@@ -100,11 +123,11 @@ public:
                     EncPacket.velA, 
                     EncPacket.velB
                 );
-
                 historyBuffer.push_back(lineBuffer);
+                newEncoderPacket = false;
             }
 
-            if (serialCom.getPacket(&AncPacket) && ancEnable)
+            if (newLandmarkPacket && ancEnable)
             {
                 static char lineBuffer[SERIAL_LINE_SIZE_BYTES];
                 sprintf_s(
@@ -117,11 +140,11 @@ public:
                     AncPacket.range,
                     AncPacket.rxPower                    
                 );
-
                 historyBuffer.push_back(lineBuffer);
+                newLandmarkPacket = false;
             }
 
-            if (serialCom.getPacket(&statPacket) && statEnable)
+            if (newStatPacket && statEnable)
             {
                 static char lineBuffer[SERIAL_LINE_SIZE_BYTES];
                 sprintf_s(
@@ -134,6 +157,7 @@ public:
                 
                 );
                 historyBuffer.push_back(lineBuffer);
+                newStatPacket = false;
             }
 
             if (historyBuffer.size() > SERIAL_HISTORY_SIZE_LINES)

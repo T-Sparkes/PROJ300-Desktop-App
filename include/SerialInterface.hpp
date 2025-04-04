@@ -18,6 +18,10 @@
 #define RANGE_PACKET_ID 0x03
 #define STATUS_PACKET_ID 0x04
 
+#define SERIAL_STATUS_EVENT SDL_EVENT_USER + 0x01
+#define SERIAL_LANDMARK_EVENT SDL_EVENT_USER + 0x02
+#define SERIAL_ENCODER_EVENT SDL_EVENT_USER + 0x03
+
 #pragma pack(push, 1)
 struct GenericPacket // This is a test packet.
 {
@@ -109,4 +113,7 @@ public:
     bool getPacket(AnchorRangePacket *packet);
     bool getPacket(StatusPacket *packet);
     void PrintRawPacket(uint8_t *bytes, size_t numBytes);
+    
+    template <typename PacketType>
+    void dispatchPacketEvent(PacketType *packet, int eventCode);
 };

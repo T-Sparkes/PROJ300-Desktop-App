@@ -49,7 +49,8 @@ protected:
             this->OnEvent(&event);
             eventCount++;
         }
-        this->OnEvent(nullptr); // Final event for ImGui Io to update
+        event.type = SDL_EVENT_LAST; // Dummy event to trigger ImGui event processing
+        this->OnEvent(&event); // Final event for ImGui Io to update
         eventCount = 0;
     }
 
