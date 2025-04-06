@@ -88,6 +88,8 @@ inline void ConfigWindow::OnUpdate()
         if (ImGui::CollapsingHeader("Kalman Filter", ImGuiTreeNodeFlags_DefaultOpen))
         {  
             ImGui::Text("Pose Estimate: %.3f, %.3f, %.3f", m_KalmanFilter.x.x(), m_KalmanFilter.x.y(), m_KalmanFilter.x.z());
+            ImGui::InputDouble("Process Noise", &m_KalmanFilter.processNoise, 0.01f, 0.1f, "%.3e");
+            ImGui::InputDouble("Measurement Noise", &m_KalmanFilter.measurementNoise, 0.01f, 0.1f, "%.3e");
         }
     }
     ImGui::End();

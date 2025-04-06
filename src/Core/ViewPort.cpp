@@ -18,6 +18,7 @@ ViewPort::ViewPort() : m_camera({0, 0}, {0, 0}, 100), m_rendererBackend(Renderer
 {
     circleTexture = LoadTexture("textures\\circle.bmp");
     robotTexture = LoadTexture("textures\\robot.bmp");
+    squareTexture = LoadTexture("textures\\square.bmp");
 }
 
 ViewPort::~ViewPort()
@@ -106,7 +107,41 @@ void ViewPort::RenderTexture( SDL_Texture* texture, Eigen::Vector2d pos, Eigen::
 
     SDL_SetTextureColorMod(texture, r, g, b);  //Set the colour of the texture
     SDL_SetTextureAlphaMod(texture, a);  //Set the alpha of the texture
+    SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND); 
     SDL_RenderTextureRotated(m_rendererBackend.GetSdlRenderer(), texture, NULL, &destRect, ((angle + m_camera.rotation) * (180.0 / M_PI)), NULL, SDL_FLIP_NONE);
+}
+
+void ViewPort::RenderLineTexture(
+    Eigen::Vector2d start, 
+    Eigen::Vector2d end,
+    double width, 
+    uint8_t r, uint8_t g, uint8_t b, 
+    uint8_t a
+)
+{
+    //Render a line using the rotated square texture
+    start = m_camera.transform * start;
+    end = m_camera.transform * end;
+    
+    Eigen::Vector2d line = end - start;  //Get the line vector
+    double angle = atan2(line.y(), line.x());  //Get the angle of the line
+    double length = line.norm();  //Get the length of the line
+
+    Eigen::Vector2d center = start + line / 2.0;  //Get the center of the line
+    Eigen::Vector2d size = {length, width * m_camera.getScale()};  //Get the size of the line
+
+    SDL_FRect destRect = 
+    {
+        (float)(center.x() - (size.x() ) / 2.0), 
+        (float)(center.y() - (size.y() ) / 2.0), 
+        (float)(size.x()), 
+        (float)(size.y())
+    };  //Create a rect to render the texture to
+
+    SDL_SetTextureColorMod(squareTexture, r, g, b);  //Set the colour of the texture
+    SDL_SetTextureAlphaMod(squareTexture, a);  //Set the alpha of the texture
+    SDL_SetTextureBlendMode(squareTexture, SDL_BLENDMODE_BLEND);  //Set the blend mode to alpha
+    SDL_RenderTextureRotated(m_rendererBackend.GetSdlRenderer(), squareTexture, NULL, &destRect, ((angle + m_camera.rotation) * (180.0 / M_PI)), NULL, SDL_FLIP_NONE);  //Render the texture
 }
 
 SDL_Texture* ViewPort::LoadTexture(std::string path)

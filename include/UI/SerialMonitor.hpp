@@ -1,6 +1,7 @@
 #include "imgui.h"
 #include "SerialInterface.hpp"
 #include "UI/UIwindow.hpp"
+#include <deque>
 
 #define SERIAL_LINE_SIZE_BYTES 128
 #define SERIAL_HISTORY_SIZE_LINES 64
@@ -19,7 +20,7 @@ public:
     StatusPacket statPacket;
 
     int baudInput = DEFAULT_BAUDRATE;
-    std::vector<std::string> historyBuffer; // This is gross, i might fix it later
+    std::deque<std::string> historyBuffer; // This is gross, i might fix it later
 
     SerialInterface& serialCom;
     std::vector<std::string> availablePorts;
@@ -162,7 +163,7 @@ public:
 
             if (historyBuffer.size() > SERIAL_HISTORY_SIZE_LINES)
             {
-                historyBuffer.erase(historyBuffer.begin());
+                historyBuffer.pop_front(); // remove the oldest line
             }
 
             ImGui::BeginChild("Console", ImVec2(0, 0), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);

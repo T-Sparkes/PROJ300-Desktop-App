@@ -13,6 +13,7 @@
 #include "Localization/LandmarkContainer.hpp"
 #include "Localization/ConstPosKalmanFilter.hpp"
 #include "Localization/OdomKalmanFilter.hpp"
+#include "Localization/PathController.hpp"
 
 #include "WorldGrid.hpp"
 #include "Buffer.hpp"
@@ -28,7 +29,7 @@
 #define DEFAULT_LANDMARK_B_POS {0.65, 0}
 
 #define KF_DEFAULT_POS {0, 0, 0}
-#define KF_DEFAULT_Q 100e-12 //10e-12 //100e-12
+#define KF_DEFAULT_Q 0.5e-6 //10e-12 //100e-12
 #define KF_DEFAULT_R 0.1
 
 /*
@@ -42,8 +43,9 @@
 class Application : public BaseApplication 
 {
 public:
-    static Application &GetInstance();
-    
+    Application();
+    ~Application() = default;
+
 private:
     double m_AvgFrameTime;
     Buffer<ImPlotPoint> m_FrameTBuffer;
@@ -52,6 +54,7 @@ private:
     GridRenderer m_WorldGrid;
     SerialInterface m_RobotSerial;
     LandmarkContainer m_Landmarks;
+    PathController m_PathController;
     OdomKalmanFilter m_KalmanFilter;
 
     // UI windows
@@ -63,9 +66,8 @@ private:
 
     std::vector<std::shared_ptr<UIwindow>> m_UIwindows;
 
-    Application();
     void OnEvent(SDL_Event *event) override;
     void Update() override;
-    void m_ViewPortWindow();
+    void m_HandleViewportInput();
     void m_CalcFrameTime();
 };

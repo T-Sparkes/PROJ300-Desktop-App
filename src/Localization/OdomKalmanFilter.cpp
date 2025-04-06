@@ -37,18 +37,19 @@ void OdomKalmanFilter::predict(const Eigen::Vector2d& U, double dt)
     encoderA = static_cast<float>(U[0]);
     encoderB = static_cast<float>(U[1]);
 
-    // nonlinear motion model (differential drive)
+    // Convert encoder values to distance traveled
     float d = (dL + dR) / 2.0f;
     float dTheta = (dR - dL) / (chassisWidth);
-    
+
+    // Jacobian of the motion model
+    F << 1, 0, -d * sin(x.z() + dTheta / 2.0f),
+         0, 1,  d * cos(x.z() + dTheta / 2.0f),
+         0, 0,  1;
+
+    // nonlinear motion model (differential drive)
     x.x() += d * cos(x.z() + dTheta / 2.0f);
     x.y() += d * sin(x.z() + dTheta / 2.0f);
     x.z() += dTheta;
-
-    // Jacobian of the motion model
-    F << 1, 0, -d * sin(x.z()),
-         0, 1,  d * cos(x.z()),
-         0, 0,  1;
 
     P = F * P * F.transpose() + Q;
 }
@@ -85,6 +86,40 @@ void OdomKalmanFilter::update(const Eigen::Vector2d& measurement,  double dt)
 
     // Covariance update
     P = (Eigen::MatrixXd::Identity(3, 3) - K * H) * P;
+}
+
+void OdomKalmanFilter::updateLandmark(char landmark, Eigen::Vector2d landmarkPos,  double measurement)
+{
+    // Local R for scalar measurement
+    Eigen::MatrixXd R_(1,1);
+    R_ << measurementNoise;
+
+    // Current state
+    double x_pos = x(0);  
+    double y_pos = x(1); 
+
+    // Expected measurement
+    double dx = x_pos - landmarkPos(0);
+    double dy = y_pos - landmarkPos(1);
+    double h_x = std::sqrt(dx*dx + dy*dy);
+    if (h_x < 1e-6) h_x = 1e-6;
+
+    // Jacobian matrix H for one landmark
+    Eigen::MatrixXd H_(1, 3); 
+    H_ << dx / h_x, dy / h_x, 0;
+
+    // Kalman gain (3x1)
+    Eigen::Vector3d K_ = P * H_.transpose() * (H_ * P * H_.transpose() + R_).inverse();
+
+    // State update
+    x = x + K_ * (measurement - h_x);
+
+    // Covariance update
+    P = (Eigen::MatrixXd::Identity(3, 3) - K_ * H_) * P;
+
+    // Update full K matrix for visualization
+    if (landmark == 'A') K.col(0) = K_;
+    else if (landmark == 'B') K.col(1) = K_;
 }
 
 void OdomKalmanFilter::setPoseEstimate(Eigen::Vector3d initialState)

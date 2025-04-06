@@ -1,12 +1,6 @@
 
 #include "Application.hpp"
 
-Application& Application::GetInstance()
-{
-    static Application instance;
-    return instance;
-}
-
 Application::Application() : 
     m_WorldGrid({0, 0}, {DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE}), 
     m_Landmarks(DEFAULT_LANDMARK_A_POS, DEFAULT_LANDMARK_B_POS), 
@@ -31,23 +25,25 @@ Application::Application() :
 
 void Application::OnEvent(SDL_Event* event) 
 {
-    if (ImGui::IsKeyDown(ImGuiKey_Escape))
+    if (ImGui::IsKeyPressed(ImGuiKey_Escape))
     {
-        appState = QUIT;
+        appState = RESTART;
     }
 
-    if (ImGui::IsKeyDown(ImGuiKey_F11))
+    if (ImGui::IsKeyPressed(ImGuiKey_F11, false))
     {
         static bool bFullscreen = false;
         bFullscreen = !bFullscreen;
         SDL_SetWindowFullscreen(RendererBackend::GetInstance().GetSdlWindow(), bFullscreen);
+        printf("APP INFO: Fullscreen: %s\n", bFullscreen ? "Enabled" : "Disabled");
     }
 
-    if (ImGui::IsKeyDown(ImGuiKey_F10))
+    if (ImGui::IsKeyPressed(ImGuiKey_F10, false))
     {
         static bool bVsync = true;
         bVsync = !bVsync;
         SDL_SetRenderVSync(RendererBackend::GetInstance().GetSdlRenderer(), bVsync);
+        printf("APP INFO: VSync: %s\n", bVsync ? "Enabled" : "Disabled");
     }
 
     if (event->type == SDL_EVENT_USER && event->user.code == SERIAL_STATUS_EVENT)
@@ -65,7 +61,12 @@ void Application::OnEvent(SDL_Event* event)
 
         m_Landmarks.OnNewPacket(&landmarkData);
         m_SerialMonitor->OnNewLandmarkPacket(&landmarkData);
-        m_KalmanFilter.update({m_Landmarks.getLandmarkRange('A') , m_Landmarks.getLandmarkRange('B')}, ImGui::GetIO().DeltaTime);
+    
+        m_KalmanFilter.updateLandmark(
+            landmarkData.anchorID, 
+            m_Landmarks.getLandmarkPos(landmarkData.anchorID), 
+            m_Landmarks.getLandmarkRange(landmarkData.anchorID)
+        );
     }
 
     else if (event->type == SDL_EVENT_USER && event->user.code == SERIAL_ENCODER_EVENT)
@@ -80,19 +81,13 @@ void Application::OnEvent(SDL_Event* event)
 
 void Application::Update()
 {
+    m_HandleViewportInput();
     Eigen::Vector2d mousePosWorld = viewPort.GetCamera().transform.inverse() * ViewPort::GetInstance().GetViewPortMousePos();
-    static Eigen::Vector2d goal1 = {-0.65, -0.75};
-    static Eigen::Vector2d goal2 = {-0.5, -2};
-    static Eigen::Vector2d goal3 = {0.65, -0.75};
-    static Eigen::Vector2d goal4 = {1.5, -0.75};
-    static Eigen::Vector2d currentGoal = goal1; 
+    static Eigen::Vector2d currentGoal = m_PathController.getNextWaypoint(); 
 
     if ((m_KalmanFilter.x.head(2) - currentGoal).norm() < 0.1)
     {
-        if (currentGoal == goal1) currentGoal = goal2;
-        else if (currentGoal == goal2) currentGoal = goal3;
-        else if (currentGoal == goal3) currentGoal = goal4;
-        else if (currentGoal == goal4) currentGoal = goal1;              
+        currentGoal = m_PathController.getNextWaypoint();           
     }
 
     // Update Robot Serial with new encoder data
@@ -122,14 +117,13 @@ void Application::Update()
     }
 
     // Update UI
-    m_ViewPortWindow();
     for (auto& window : m_UIwindows)
     {
         window->OnUpdate();
     }
 }
 
-void Application::m_ViewPortWindow()
+void Application::m_HandleViewportInput()
 {
     viewPort.ViewPortBegin();
     {
@@ -146,7 +140,17 @@ void Application::m_ViewPortWindow()
             {
                 m_KalmanFilter.setPoseEstimate({mousePosWorld.x(), mousePosWorld.y(), 0});
                 m_KalmanFilter.P = Eigen::Matrix3d::Identity();
-            }  
+            }
+            
+            if (ImGui::IsKeyDown(ImGuiKey_LeftShift) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+            {
+                m_PathController.addWaypoint(mousePosWorld);
+            }
+
+            else if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) & ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+            {
+                m_PathController.removeWaypointNear(mousePosWorld);
+            }
         }
     }
     viewPort.ViewPortEnd();
