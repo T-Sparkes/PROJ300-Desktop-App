@@ -3,35 +3,27 @@
 #include <deque>
 #include <Eigen/Dense>
 #include "Core/ViewPortRenderable.hpp"
+#include <fstream>
 
 // Class to handle placing waypoints and the selection of the path to follow
 class PathController : public ViewPortRenderable
 {
 private:
-    std::deque<Eigen::Vector2d> m_Waypoints; // List of waypoints to follow
-    int m_CurrentWaypointIndex = 0; // Index of the current waypoint
+    int m_CurrentWaypointIndex = 0; 
 
 public:
-    PathController(/* args */)
-    {
-
-    }
-
-    ~PathController()
-    {
-
-    }
+    std::deque<Eigen::Vector2d> waypoints; 
 
     Eigen::Vector2d getNextWaypoint()
     {
-        if (m_CurrentWaypointIndex < m_Waypoints.size() && m_Waypoints.size() > 0)
+        if (m_CurrentWaypointIndex < waypoints.size() && waypoints.size() > 0)
         {
-            return m_Waypoints[m_CurrentWaypointIndex++];
+            return waypoints[m_CurrentWaypointIndex++];
         }
-        else if (m_CurrentWaypointIndex == m_Waypoints.size() && m_Waypoints.size() > 0)
+        else if (m_CurrentWaypointIndex == waypoints.size() && waypoints.size() > 0)
         {
-            m_CurrentWaypointIndex = 0; // Reset the index to loop through waypoints again
-            return m_Waypoints[m_CurrentWaypointIndex++];
+            m_CurrentWaypointIndex = 0; // Reset index to path start
+            return waypoints[m_CurrentWaypointIndex++];
         }
         else
         {
@@ -39,20 +31,29 @@ public:
         }
     }
 
+    void moveWaypoint(int index, const Eigen::Vector2d& newPos)
+    {
+        if (index >= 0 && index < waypoints.size())
+        {
+            waypoints[index] = newPos;
+            SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "PATHCONTROL INFO: Waypoint moved to: %.2f, %.2f\n", newPos.x(), newPos.y());
+        }
+    }
+
     void addWaypoint(const Eigen::Vector2d& waypoint)
     {
-        m_Waypoints.push_back(waypoint);
+        waypoints.push_back(waypoint);
         printf("Waypoint added at: %.2f, %.2f\n", waypoint.x(), waypoint.y());
     }
 
     void removeWaypointNear(Eigen::Vector2d& position)
     {
-        for (auto it = m_Waypoints.begin(); it != m_Waypoints.end(); ++it)
+        for (auto it = waypoints.begin(); it != waypoints.end(); ++it)
         {
-            if ((it->head(2) - position).norm() < 0.1) // Check if the waypoint is within a certain distance
+            if ((it->head(2) - position).norm() < 0.1) // Check if the waypoint is within 10cm
             {
-                m_Waypoints.erase(it);
-                printf("Waypoint removed at: %.2f, %.2f\n", position.x(), position.y());
+                waypoints.erase(it);
+                SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "PATHCONTROL INFO: Waypoint removed at: %.2f, %.2f\n", position.x(), position.y());
                 break;
             }
         }
@@ -69,19 +70,19 @@ public:
         ViewPort& viewport = ViewPort::GetInstance();
 
         //Draw lines between waypoints
-        if (m_Waypoints.size() > 1)
+        if (waypoints.size() > 1)
         {
-            for (size_t i = 0; i < m_Waypoints.size() - 1; ++i)
+            for (size_t i = 0; i < waypoints.size() - 1; ++i)
             {
-                viewport.RenderLineTexture(m_Waypoints[i], m_Waypoints[i + 1], 0.025, YELLOW, 100); // Render the line between waypoints
+                viewport.RenderLineTexture(waypoints[i], waypoints[i + 1], 0.025, YELLOW, 100); // Render the line between waypoints
             }
 
             // Draw line between last a first waypoint
-            viewport.RenderLineTexture(m_Waypoints.back(), m_Waypoints.front(), 0.025, YELLOW, 100); // Render the line between last and first waypoint
+            viewport.RenderLineTexture(waypoints.back(), waypoints.front(), 0.025, YELLOW, 100); // Render the line between last and first waypoint
         }
 
         // Render the waypoints as circles
-        for (const auto& waypoint : m_Waypoints)
+        for (const auto& waypoint : waypoints)
         {
             // Render each waypoint as a circle
             if (isMouseOverWaypoint(waypoint))
@@ -92,6 +93,57 @@ public:
             {
                 viewport.RenderTexture(viewport.circleTexture, waypoint, {0.05, 0.05}, 0, YELLOW, 255);
             }    
+        }
+    }
+
+    void savePath(const std::string& pathName)
+    {
+        // Save to binary file
+        std::ofstream file(pathName, std::ios::binary);
+        if (file.is_open())
+        {
+            size_t waypointCount = waypoints.size();
+            file.write(reinterpret_cast<const char*>(&waypointCount), sizeof(waypointCount)); // Write the number of waypoints
+
+            for (const auto& waypoint : waypoints)
+            {
+                file.write(reinterpret_cast<const char*>(&waypoint[0]), sizeof(double)); 
+                file.write(reinterpret_cast<const char*>(&waypoint[1]), sizeof(double)); 
+            }
+
+            file.close();
+            SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "PATHCONTROL INFO: Path saved to %s\n", pathName.c_str());
+        }
+        else
+        {
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "PATHCONTROL ERROR: Unable to open file %s for writing\n", pathName.c_str());
+        }
+    }
+
+    void loadPath(const std::string& pathName)
+    {
+        // Load waypoints from file
+        std::ifstream file(pathName, std::ios::binary);
+        if (file.is_open())
+        {
+            waypoints.clear(); // Clear existing waypoints
+            size_t waypointCount;
+            file.read(reinterpret_cast<char*>(&waypointCount), sizeof(waypointCount)); // Read number of waypoints
+
+            for (size_t i = 0; i < waypointCount; ++i)
+            {
+                Eigen::Vector2d waypoint;
+                file.read(reinterpret_cast<char*>(&waypoint[0]), sizeof(double)); 
+                file.read(reinterpret_cast<char*>(&waypoint[1]), sizeof(double)); 
+                waypoints.push_back(waypoint);
+            }
+
+            file.close();
+            SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "PATHCONTROL INFO: Path loaded from %s\n", pathName.c_str());
+        }
+        else
+        {
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "PATHCONTROL ERROR: Unable to open file %s for reading\n", pathName.c_str());
         }
     }
 };

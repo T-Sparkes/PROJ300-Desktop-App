@@ -19,23 +19,25 @@ ViewPort::ViewPort() : m_camera({0, 0}, {0, 0}, 100), m_rendererBackend(Renderer
     circleTexture = LoadTexture("textures\\circle.bmp");
     robotTexture = LoadTexture("textures\\robot.bmp");
     squareTexture = LoadTexture("textures\\square.bmp");
+    SDL_LogVerbose(SDL_LOG_CATEGORY_APPLICATION, "VIEWPORT: ViewPort Created\n");
 }
 
 ViewPort::~ViewPort()
 {
     if(m_renderTexture) SDL_DestroyTexture(m_renderTexture);
+    SDL_LogVerbose(SDL_LOG_CATEGORY_APPLICATION, "VIEWPORT: ViewPort Destroyed\n");
 }
 
 void ViewPort::AddRenderable(ViewPortRenderable* renderable)
 {
     m_Renderables.push_back(renderable);
-    SDL_Log("VIEWPORT INFO: Renderable Added - Total: %d\n", m_Renderables.size());
+    SDL_LogVerbose(SDL_LOG_CATEGORY_APPLICATION, "VIEWPORT: Renderable Added - Total: %d\n", m_Renderables.size());
 }
 
 void ViewPort::RemoveRenderable(ViewPortRenderable* renderable)
 {
     m_Renderables.erase(std::find(m_Renderables.begin(), m_Renderables.end(), renderable));
-    SDL_Log("VIEWPORT INFO: Renderable Removed - Total: %d\n", m_Renderables.size());
+    SDL_LogVerbose(SDL_LOG_CATEGORY_APPLICATION, "VIEWPORT: Renderable Removed - Total: %d\n", m_Renderables.size());
 }
 
 void ViewPort::ViewPortBegin()
@@ -150,9 +152,11 @@ SDL_Texture* ViewPort::LoadTexture(std::string path)
 
     SDL_Surface* tempSerface = SDL_LoadBMP((sfilePath + path).c_str());
     if (tempSerface == NULL) SDL_Log("Could not load surface: %s\n", SDL_GetError());
+    else SDL_LogVerbose(SDL_LOG_CATEGORY_APPLICATION, "VIEWPORT: Loaded surface: %s\n", path.c_str());
 
     SDL_Texture* texture = SDL_CreateTextureFromSurface(m_rendererBackend.GetSdlRenderer(), tempSerface);
     if (texture == NULL) SDL_Log("Could not load texture: %s\n", SDL_GetError());
+    else SDL_LogVerbose(SDL_LOG_CATEGORY_APPLICATION, "VIEWPORT: Loaded texture: %s\n", path.c_str());
 
     SDL_DestroySurface(tempSerface);
 

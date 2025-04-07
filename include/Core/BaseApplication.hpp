@@ -10,30 +10,30 @@ class BaseApplication
 public:
     appState_t Run()
     {
+        SDL_LogVerbose(SDL_LOG_CATEGORY_APPLICATION, "APP INFO: Application started.");
         while(appState == RUN)
         {
             m_RendererBackend.StartFrame();
             this->ProcessEvents();
             this->Update();
-            viewPort.RenderViewport();
+            m_ViewPort.RenderViewport();
             m_RendererBackend.EndFrame();
         }
-
         return appState;
     }
 
 protected:
     appState_t appState = INIT;
-    ViewPort& viewPort;
+    ViewPort& m_ViewPort;
 
     virtual void Update() = 0;
     virtual void OnEvent(SDL_Event* event) = 0;
 
-    BaseApplication::BaseApplication() : m_RendererBackend(RendererBackend::GetInstance()), viewPort(ViewPort::GetInstance())
+    BaseApplication::BaseApplication() : m_RendererBackend(RendererBackend::GetInstance()), m_ViewPort(ViewPort::GetInstance())
     {
         ImGuiIO& Io = ImGui::GetIO();
         Io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-        appState = RUN; 
+        appState = RUN;
     }
 
     void ProcessEvents()

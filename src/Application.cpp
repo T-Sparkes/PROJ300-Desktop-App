@@ -1,5 +1,6 @@
 
 #include "Application.hpp"
+#include "fstream"
 
 Application::Application() : 
     m_WorldGrid({0, 0}, {DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE}), 
@@ -19,33 +20,15 @@ Application::Application() :
     m_UIwindows.push_back(m_infoBar);
     m_UIwindows.push_back(m_GraphWindow);
 
-    viewPort.GetCamera().setScale(DEFAULT_VIEWPORT_ZOOM);
+    m_ViewPort.GetCamera().setScale(DEFAULT_VIEWPORT_ZOOM);
     m_KalmanFilter.setAnchors(DEFAULT_LANDMARK_A_POS, DEFAULT_LANDMARK_B_POS);
+
+    SDL_LogVerbose(SDL_LOG_CATEGORY_APPLICATION, "APP INFO: Application initialized\n");
 }
+
 
 void Application::OnEvent(SDL_Event* event) 
 {
-    if (ImGui::IsKeyPressed(ImGuiKey_Escape))
-    {
-        appState = RESTART;
-    }
-
-    if (ImGui::IsKeyPressed(ImGuiKey_F11, false))
-    {
-        static bool bFullscreen = false;
-        bFullscreen = !bFullscreen;
-        SDL_SetWindowFullscreen(RendererBackend::GetInstance().GetSdlWindow(), bFullscreen);
-        printf("APP INFO: Fullscreen: %s\n", bFullscreen ? "Enabled" : "Disabled");
-    }
-
-    if (ImGui::IsKeyPressed(ImGuiKey_F10, false))
-    {
-        static bool bVsync = true;
-        bVsync = !bVsync;
-        SDL_SetRenderVSync(RendererBackend::GetInstance().GetSdlRenderer(), bVsync);
-        printf("APP INFO: VSync: %s\n", bVsync ? "Enabled" : "Disabled");
-    }
-
     if (event->type == SDL_EVENT_USER && event->user.code == SERIAL_STATUS_EVENT)
     {
         StatusPacket statusData = *reinterpret_cast<StatusPacket*>(event->user.data1);
@@ -79,10 +62,33 @@ void Application::OnEvent(SDL_Event* event)
     }
 }   
 
+
 void Application::Update()
 {
+    if (ImGui::IsKeyPressed(ImGuiKey_Escape))
+    {
+        appState = RESTART;
+    }
+
+    if (ImGui::IsKeyPressed(ImGuiKey_F11, false))
+    {
+        static bool bFullscreen = false;
+        bFullscreen = !bFullscreen;
+        SDL_SetWindowFullscreen(RendererBackend::GetInstance().GetSdlWindow(), bFullscreen);
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "APP INFO: Fullscreen: %s\n", bFullscreen ? "Enabled" : "Disabled");
+    }
+
+    if (ImGui::IsKeyPressed(ImGuiKey_F10, false))
+    {
+        static bool bVsync = true;
+        bVsync = !bVsync;
+        SDL_SetRenderVSync(RendererBackend::GetInstance().GetSdlRenderer(), bVsync);
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "APP INFO: VSync: %s\n", bVsync ? "Enabled" : "Disabled");
+    }
+
     m_HandleViewportInput();
-    Eigen::Vector2d mousePosWorld = viewPort.GetCamera().transform.inverse() * ViewPort::GetInstance().GetViewPortMousePos();
+
+    Eigen::Vector2d mousePosWorld = m_ViewPort.GetCamera().transform.inverse() * m_ViewPort.GetViewPortMousePos();
     static Eigen::Vector2d currentGoal = m_PathController.getNextWaypoint(); 
 
     if ((m_KalmanFilter.x.head(2) - currentGoal).norm() < 0.1)
@@ -116,6 +122,23 @@ void Application::Update()
         lastGraphSample = SDL_GetTicks();
     }
 
+    ImGui::Begin("test window");
+    {
+        static char fileName[64] = "fileName";
+        ImGui::InputText("File Name", fileName, sizeof(fileName));
+
+        if (ImGui::Button("Save Path"))
+        {
+            m_PathController.savePath(std::string(fileName) + ".bin");
+        }
+
+        if (ImGui::Button("Load Path"))
+        {
+            m_PathController.loadPath(std::string(fileName) + ".bin");
+        }
+    }
+    ImGui::End();
+
     // Update UI
     for (auto& window : m_UIwindows)
     {
@@ -123,25 +146,39 @@ void Application::Update()
     }
 }
 
+
 void Application::m_HandleViewportInput()
 {
-    viewPort.ViewPortBegin();
+    m_ViewPort.ViewPortBegin();
     {
-        Eigen::Vector2d mousePosWorld = viewPort.GetCamera().transform.inverse() * ViewPort::GetInstance().GetViewPortMousePos();
+        Eigen::Vector2d mousePosWorld = m_ViewPort.GetCamera().transform.inverse() * m_ViewPort.GetViewPortMousePos();
 
         if (ImGui::IsWindowHovered())
         {
-            if (ImGui::IsMouseClicked(ImGuiMouseButton_Middle)) viewPort.GetCamera().setPanStart(mousePosWorld);
-            if (ImGui::IsMouseDragging(ImGuiMouseButton_Middle)) viewPort.GetCamera().panCamera(mousePosWorld);
+            // Camera controls
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Middle)) 
+            {
+                m_ViewPort.GetCamera().setPanStart(mousePosWorld);
+            }
 
-            if (abs(ImGui::GetIO().MouseWheel) > 0) viewPort.GetCamera().updateZoom(mousePosWorld, ImGui::GetIO().MouseWheel);
+            else if (ImGui::IsMouseDragging(ImGuiMouseButton_Middle)) 
+            {
+                m_ViewPort.GetCamera().panCamera(mousePosWorld);
+            }
 
-            if (ImGui::IsKeyDown(ImGuiKey_LeftShift) && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+            if (abs(ImGui::GetIO().MouseWheel) > 0) 
+            {
+                m_ViewPort.GetCamera().updateZoom(mousePosWorld, ImGui::GetIO().MouseWheel);
+            }
+
+            // Kalman filter controls
+            if (ImGui::IsKeyDown(ImGuiKey_LeftShift) && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
             {
                 m_KalmanFilter.setPoseEstimate({mousePosWorld.x(), mousePosWorld.y(), 0});
                 m_KalmanFilter.P = Eigen::Matrix3d::Identity();
             }
             
+            // Waypoint editing 
             if (ImGui::IsKeyDown(ImGuiKey_LeftShift) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
             {
                 m_PathController.addWaypoint(mousePosWorld);
@@ -151,9 +188,22 @@ void Application::m_HandleViewportInput()
             {
                 m_PathController.removeWaypointNear(mousePosWorld);
             }
+
+            // Move nearest waypoint to mouse position
+            else if (ImGui::IsKeyDown(ImGuiKey_LeftAlt) && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+            {
+                for (int i = 0; i < m_PathController.waypoints.size(); i++)
+                {
+                    if (m_PathController.isMouseOverWaypoint(m_PathController.waypoints[i]))
+                    {
+                        m_PathController.moveWaypoint(i, mousePosWorld);
+                        break;
+                    }
+                }
+            }
         }
     }
-    viewPort.ViewPortEnd();
+    m_ViewPort.ViewPortEnd();
 }
 
 void Application::m_CalcFrameTime()
