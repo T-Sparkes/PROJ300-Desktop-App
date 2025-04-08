@@ -51,18 +51,14 @@ inline void ConfigWindow::OnUpdate()
         // Options fo setting Landmark pos & and adjusting visualisation
         if (ImGui::CollapsingHeader("Landmark Options", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            ImGui::Checkbox("Show Landmarks", &m_Landmarks.bDrawLandmarks);
-            ImGui::Checkbox("Show Ranges", &m_Landmarks.bDrawRange);
-            ImGui::Checkbox("Show Raw Pos", &m_Landmarks.bDrawRawPos);
-
-            ImGui::SliderInt("Range Alpha", static_cast<int*>(&m_Landmarks.rangeAlpha), 0, 255);
-
             ImGui::Text("Landmark A Position: %.3f, %.3f", m_Landmarks.getLandmarkPos('A').x(), m_Landmarks.getLandmarkPos('A').y());
             ImGui::Text("Landmark B Position: %.3f, %.3f", m_Landmarks.getLandmarkPos('B').x(), m_Landmarks.getLandmarkPos('B').y());
 
             ImGui::Text("Landmark A Range: %.3f", m_Landmarks.getLandmarkRange('A'));
             ImGui::Text("Landmark B Range: %.3f", m_Landmarks.getLandmarkRange('B'));
-            
+
+            ImGui::Separator();
+
             static bool setLandmarkA = false;
             if(ImGui::Button("Set Pos A")) setLandmarkA = true;
 
@@ -83,6 +79,18 @@ inline void ConfigWindow::OnUpdate()
                 m_Landmarks.SetLandmarkPos('B', mousePosWorld);
                 m_KalmanFilter.setAnchors(m_Landmarks.getLandmarkPos('A'), m_Landmarks.getLandmarkPos('B'));
             }
+
+            ImGui::Separator();
+
+            ImGui::Checkbox("Show Landmarks", &m_Landmarks.bDrawLandmarks);
+            ImGui::SameLine();
+            ImGui::Checkbox("Show Ranges", &m_Landmarks.bDrawRange);
+            ImGui::SameLine();
+            ImGui::Checkbox("Show Raw Pos", &m_Landmarks.bDrawRawPos);
+
+            ImGui::Separator();
+
+            ImGui::SliderInt("Range Alpha", static_cast<int*>(&m_Landmarks.rangeAlpha), 0, 255);
         }
 
         if (ImGui::CollapsingHeader("Kalman Filter", ImGuiTreeNodeFlags_DefaultOpen))

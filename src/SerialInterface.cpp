@@ -79,7 +79,7 @@ void SerialInterface::m_ReadPacket()
         int bytesRead = m_SerialPort.readBytes((uint8_t*)(rxBuffer), sizeof(rxBuffer));
         memcpy(&rxPacket, rxBuffer, sizeof(rxPacket));
 
-        //PrintRawPacket(rxBuffer, PACKET_SIZE);
+        PrintRawPacket(rxBuffer, PACKET_SIZE);
 
         if (rxPacket.header == PACKET_HEADER && rxPacket.packetID == ENCODER_PACKET_ID) // Encoder packet
         {
@@ -88,7 +88,7 @@ void SerialInterface::m_ReadPacket()
             memcpy(&m_LatestEncoderPacket, rxBuffer, sizeof(m_LatestEncoderPacket));
             m_EncoderDataReady = true;
 
-            auto* packet = new EncoderDataPacket;
+            EncoderDataPacket* packet = new EncoderDataPacket;
             memcpy(packet, &m_LatestEncoderPacket, sizeof(EncoderDataPacket));
             dispatchPacketEvent(packet, SERIAL_ENCODER_EVENT);
         }
@@ -100,7 +100,7 @@ void SerialInterface::m_ReadPacket()
             memcpy(&m_LatestAnchorPacket, rxBuffer, sizeof(m_LatestAnchorPacket));
             m_RangeDataReady = true;
 
-            auto* packet = new AnchorRangePacket;
+            AnchorRangePacket* packet = new AnchorRangePacket;
             memcpy(packet, &m_LatestAnchorPacket, sizeof(AnchorRangePacket));
             dispatchPacketEvent(packet, SERIAL_LANDMARK_EVENT);
         }
@@ -112,7 +112,7 @@ void SerialInterface::m_ReadPacket()
             memcpy(&m_LatestStatusPacket, rxBuffer, sizeof(m_LatestStatusPacket));
             m_StatusDataReady = true;
 
-            auto* packet = new StatusPacket;
+            StatusPacket* packet = new StatusPacket;
             memcpy(packet, &m_LatestStatusPacket, sizeof(StatusPacket));
             dispatchPacketEvent(packet, SERIAL_STATUS_EVENT);
         }

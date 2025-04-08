@@ -34,12 +34,14 @@ void OdomKalmanFilter::predict(const Eigen::Vector2d& U, double dt)
 
     float dL = static_cast<float>((U[0] - encoderA) * wheelRadius); //New encoder - old encoder value
     float dR = static_cast<float>((U[1] - encoderB) * wheelRadius);
-    encoderA = static_cast<float>(U[0]);
-    encoderB = static_cast<float>(U[1]);
 
     // Convert encoder values to distance traveled
     float d = (dL + dR) / 2.0f;
     float dTheta = (dR - dL) / (chassisWidth);
+
+    // Save for next prediction step
+    encoderA = static_cast<float>(U[0]); 
+    encoderB = static_cast<float>(U[1]);
 
     // Jacobian of the motion model
     F << 1, 0, -d * sin(x.z() + dTheta / 2.0f),
@@ -54,7 +56,7 @@ void OdomKalmanFilter::predict(const Eigen::Vector2d& U, double dt)
     P = F * P * F.transpose() + Q;
 }
 
-void OdomKalmanFilter::update(const Eigen::Vector2d& measurement,  double dt) 
+void OdomKalmanFilter::batchUpdate(const Eigen::Vector2d& measurement,  double dt) 
 {
     R.setIdentity();
     R *= measurementNoise;
@@ -64,7 +66,7 @@ void OdomKalmanFilter::update(const Eigen::Vector2d& measurement,  double dt)
     double y_pos = x(1); 
     double theta = x(2); 
 
-    // distances to the anchors 
+    // distances to the anchors, predicted ranges
     double r_a = std::sqrt(std::pow(x_pos - anchorA(0), 2) + std::pow(y_pos - anchorA(1), 2));
     double r_b = std::sqrt(std::pow(x_pos - anchorB(0), 2) + std::pow(y_pos - anchorB(1), 2));
 

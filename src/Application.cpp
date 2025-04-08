@@ -1,6 +1,5 @@
 
 #include "Application.hpp"
-#include "fstream"
 
 Application::Application() : 
     m_WorldGrid({0, 0}, {DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE}), 
@@ -98,7 +97,7 @@ void Application::Update()
 
     // Update Robot Serial with new encoder data
     static Uint64 lastControl = SDL_GetTicks();
-    if ((SDL_GetTicks() - lastControl) > 20)
+    if ((SDL_GetTicks() - lastControl) > 1000 / CONTROL_FREQ_HZ)
     {
         if (m_ControlPanel->controlMode == WAYPOINT)
         {
@@ -110,7 +109,7 @@ void Application::Update()
 
     // Update Graphs with Kalman data
     static Uint64 lastGraphSample = SDL_GetTicks();
-    if ((SDL_GetTicks() - lastGraphSample) > 20)
+    if ((SDL_GetTicks() - lastGraphSample) > 1000 / GRAPH_FREQ_HZ)
     {
         double kRangeA = (m_KalmanFilter.x.head(2) - m_Landmarks.getLandmarkPos('A')).norm();
         double kRangeB = (m_KalmanFilter.x.head(2) - m_Landmarks.getLandmarkPos('B')).norm();
