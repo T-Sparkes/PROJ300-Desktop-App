@@ -16,7 +16,7 @@ public:
     bool newStatPacket = false; 
 
     EncoderDataPacket EncPacket;
-    AnchorRangePacket AncPacket;
+    LandmarkPacket AncPacket;
     StatusPacket statPacket;
 
     int baudInput = DEFAULT_BAUDRATE;
@@ -52,7 +52,7 @@ public:
         newStatPacket = true;
     }
 
-    void OnNewLandmarkPacket(AnchorRangePacket* packet)
+    void OnNewLandmarkPacket(LandmarkPacket* packet)
     {
         AncPacket = *packet;
         newLandmarkPacket = true;
@@ -137,7 +137,7 @@ public:
                     "PACKET: 0x%02X | 0x%02X | %c | %.2f | %.2f |\n", 
                     AncPacket.header, 
                     AncPacket.packetID, 
-                    AncPacket.anchorID, 
+                    AncPacket.LandmarkID, 
                     AncPacket.range,
                     AncPacket.rxPower                    
                 );

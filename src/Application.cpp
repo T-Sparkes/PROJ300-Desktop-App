@@ -11,7 +11,7 @@ Application::Application() :
     m_SerialMonitor = std::make_shared<SerialMonitor>(m_RobotSerial);
     m_ControlPanel = std::make_shared<BotControlWindow>(m_RobotSerial);
     m_GraphWindow = std::make_shared<GraphWindow>(m_FrameTBuffer, m_AvgFrameTime);
-    m_ConfigWindow = std::make_shared<ConfigWindow>(m_WorldGrid, m_Landmarks, m_KalmanFilter);
+    m_ConfigWindow = std::make_shared<ConfigWindow>(m_WorldGrid, m_Landmarks, m_KalmanFilter, m_PathController);
 
     m_UIwindows.push_back(m_ConfigWindow);
     m_UIwindows.push_back(m_SerialMonitor);
@@ -38,16 +38,16 @@ void Application::OnEvent(SDL_Event* event)
 
     else if (event->type == SDL_EVENT_USER && event->user.code == SERIAL_LANDMARK_EVENT)
     {
-        AnchorRangePacket landmarkData = *reinterpret_cast<AnchorRangePacket*>(event->user.data1);
+        LandmarkPacket landmarkData = *reinterpret_cast<LandmarkPacket*>(event->user.data1);
         delete event->user.data1; // Free the memory allocated for the packet
 
         m_Landmarks.OnNewPacket(&landmarkData);
         m_SerialMonitor->OnNewLandmarkPacket(&landmarkData);
     
         m_KalmanFilter.updateLandmark(
-            landmarkData.anchorID, 
-            m_Landmarks.getLandmarkPos(landmarkData.anchorID), 
-            m_Landmarks.getLandmarkRange(landmarkData.anchorID)
+            landmarkData.LandmarkID, 
+            m_Landmarks.getLandmarkPos(landmarkData.LandmarkID), 
+            m_Landmarks.getLandmarkRange(landmarkData.LandmarkID)
         );
     }
 
@@ -88,23 +88,35 @@ void Application::Update()
     m_HandleViewportInput();
 
     Eigen::Vector2d mousePosWorld = m_ViewPort.GetCamera().transform.inverse() * m_ViewPort.GetViewPortMousePos();
-    static Eigen::Vector2d currentGoal = m_PathController.getNextWaypoint(); 
+    static Eigen::Vector2d currentGoal = {0, -0.5}; 
 
-    if ((m_KalmanFilter.x.head(2) - currentGoal).norm() < 0.1)
+    static bool bStopped = false;
+    if ((m_KalmanFilter.x.head(2) - currentGoal).norm() < 0.05)
     {
-        currentGoal = m_PathController.getNextWaypoint();           
+        currentGoal = m_PathController.getNextWaypoint();    
+    }
+
+    //printf("Current Goal: %.2f, %.2f\n", currentGoal.x(), currentGoal.y());
+
+    if (ImGui::IsKeyPressed(ImGuiKey_Space, false))
+    {
+        bStopped = !bStopped;
     }
 
     // Update Robot Serial with new encoder data
     static Uint64 lastControl = SDL_GetTicks();
-    if ((SDL_GetTicks() - lastControl) > 1000 / CONTROL_FREQ_HZ)
+    if (((SDL_GetTicks() - lastControl) > 1000 / CONTROL_FREQ_HZ) && !bStopped)
     {
         if (m_ControlPanel->controlMode == WAYPOINT)
         {
-            Eigen::Vector2d wheelVels = wheelVelFromGoal(m_KalmanFilter.x.x(), m_KalmanFilter.x.y(), m_KalmanFilter.x.z(), currentGoal.x(), currentGoal.y());
+            Eigen::Vector2d wheelVels = m_PathController.wheelVelFromGoal(m_KalmanFilter.x.x(), m_KalmanFilter.x.y(), m_KalmanFilter.x.z(), currentGoal.x(), currentGoal.y());
             m_RobotSerial.SetCommandVel(static_cast<float>(wheelVels[0]), static_cast<float>(wheelVels[1]));
         }
         lastControl = SDL_GetTicks();
+    }
+    else if (bStopped)
+    {
+        m_RobotSerial.SetCommandVel(0, 0);
     }
 
     // Update Graphs with Kalman data
@@ -120,23 +132,6 @@ void Application::Update()
         m_CalcFrameTime();
         lastGraphSample = SDL_GetTicks();
     }
-
-    ImGui::Begin("test window");
-    {
-        static char fileName[64] = "fileName";
-        ImGui::InputText("File Name", fileName, sizeof(fileName));
-
-        if (ImGui::Button("Save Path"))
-        {
-            m_PathController.savePath(std::string(fileName) + ".bin");
-        }
-
-        if (ImGui::Button("Load Path"))
-        {
-            m_PathController.loadPath(std::string(fileName) + ".bin");
-        }
-    }
-    ImGui::End();
 
     // Update UI
     for (auto& window : m_UIwindows)
@@ -178,7 +173,7 @@ void Application::m_HandleViewportInput()
             }
             
             // Waypoint editing 
-            if (ImGui::IsKeyDown(ImGuiKey_LeftShift) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+            if (ImGui::IsKeyDown(ImGuiKey_LeftShift) && ImGui::IsMouseClicked(ImGuiMouseButton_Left, true))
             {
                 m_PathController.addWaypoint(mousePosWorld);
             }

@@ -9,7 +9,6 @@
 #include "UI/GraphWindow.hpp"
 #include "UI/SerialMonitor.hpp"
 
-#include "Localization/DiffDriveOdom.hpp"
 #include "Localization/LandmarkContainer.hpp"
 #include "Localization/ConstPosKalmanFilter.hpp"
 #include "Localization/OdomKalmanFilter.hpp"
@@ -28,20 +27,12 @@
 #define DEFAULT_GRID_SIZE 4
 #define DEFAULT_VIEWPORT_ZOOM 250
 
-#define DEFAULT_LANDMARK_A_POS {-0.65, 0}
-#define DEFAULT_LANDMARK_B_POS {0.65, 0}
+#define DEFAULT_LANDMARK_A_POS {-0.725, 0}
+#define DEFAULT_LANDMARK_B_POS {0.725, 0}
 
 #define KF_DEFAULT_POS {0, 0, 0}
-#define KF_DEFAULT_Q 0.5e-6 //10e-12 //100e-12
-#define KF_DEFAULT_R 0.1
-
-/*
-    ~~~ NOTES ~~~
-    1. Corrupt serial data containing large numbers will freeze program
-    2. Need to add kalman filter updates only when new Data is received, DONE, using SDL events
-    3. Need to add proper waypoint navigation
-    4. Serial interface needs observer pattern to update UI windows: DONE, used sdl events instead
-*/
+#define KF_DEFAULT_Q 1e-5 //10e-12//10e-12 //100e-12
+#define KF_DEFAULT_R 10
 
 class Application : public BaseApplication 
 {

@@ -27,7 +27,7 @@ void OdomKalmanFilter::predict(const Eigen::Vector2d& U, double dt)
 {
     Q.setIdentity();
     Q *= processNoise;
-    Q(Q.rows() - 1, Q.cols() - 1) = 1e-6; // 1e-6
+    Q(Q.rows() - 1, Q.cols() - 1) = 1e-4; // 1e-6
 
     const float chassisWidth = 0.173f;
     const float wheelRadius = 0.03f;
@@ -103,7 +103,7 @@ void OdomKalmanFilter::updateLandmark(char landmark, Eigen::Vector2d landmarkPos
     // Expected measurement
     double dx = x_pos - landmarkPos(0);
     double dy = y_pos - landmarkPos(1);
-    double h_x = std::sqrt(dx*dx + dy*dy);
+    double h_x = std::sqrt(dx * dx + dy * dy);
     if (h_x < 1e-6) h_x = 1e-6;
 
     // Jacobian matrix H for one landmark

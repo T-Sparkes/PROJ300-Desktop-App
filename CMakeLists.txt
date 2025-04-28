@@ -1,7 +1,7 @@
 # Set minimum CMake version
 cmake_minimum_required(VERSION 3.10)
 
-# Dynamically set the project name based on the folder name
+# set the project name based on the folder name
 get_filename_component(PROJECT_NAME ${CMAKE_SOURCE_DIR} NAME)
 project(${PROJECT_NAME} VERSION 0.1.0 LANGUAGES C CXX)
 
@@ -49,6 +49,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE imgui::imgui)
 find_package(implot CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE implot::implot)
 
+set(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP FALSE)
+include(InstallRequiredSystemLibraries)
+
 # Automatically copy runtime libraries (DLLs)
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -57,6 +60,10 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND_EXPAND_LISTS
 )
 
-# Optionally print project details
-message(STATUS "Project Name: ${PROJECT_NAME}")
-message(STATUS "Project Version: ${PROJECT_VERSION}")
+# Loop over all system libraries and copy them to the output dir
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS}
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>
+    COMMENT "Copying MSVC redistributables to build directory"
+)

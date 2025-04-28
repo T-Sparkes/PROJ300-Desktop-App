@@ -1,7 +1,8 @@
 #pragma once
-
+#define _USE_MATH_DEFINES
 #include <deque>
 #include <Eigen/Dense>
+#include <math.h>
 #include "Core/ViewPortRenderable.hpp"
 #include <fstream>
 
@@ -145,6 +146,31 @@ public:
         {
             SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "PATHCONTROL ERROR: Unable to open file %s for reading\n", pathName.c_str());
         }
+    }
+
+
+    Eigen::Vector2d wheelVelFromGoal(double x, double y, double theta, double targetX, double targetY) 
+    {
+
+        const double width = 0.173; 
+
+        double targetTheta = atan2(targetY - y, targetX - x);
+        double error = targetTheta - theta;
+
+        while (error > M_PI) error -= 2 * M_PI;
+        while (error < -M_PI) error += 2 * M_PI;
+
+        double omega = 2 * error;
+        omega = (std::abs(omega) > 1) ? 1 * (omega / std::abs(omega)) : omega; // Limit omega to +/- 3
+
+        double vForwards = 0.1;  
+        double vL = vForwards - (width / 2.0) * omega;
+        double vR = vForwards + (width / 2.0) * omega;
+
+        double omegaL = vL / 0.03;
+        double omegaR = vR / 0.03;
+
+        return {omegaL, omegaR}; 
     }
 };
 

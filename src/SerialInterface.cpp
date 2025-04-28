@@ -3,17 +3,7 @@
 
 SerialInterface::SerialInterface()
 {
-    // Test what ports are available by trying to open and close each one
-    //for (int i = 0; i < 256; i++)
-    //{
-    //    std::string portName = "COM" + std::to_string(i);
-//
-    //    if (m_SerialPort.openDevice(portName.c_str(), 115200) == 1)
-    //    {
-    //        printf("Port %s is available\n", portName.c_str());
-    //        m_SerialPort.closeDevice();
-    //    }
-    //}
+
 }
 
 SerialInterface::~SerialInterface()
@@ -79,42 +69,69 @@ void SerialInterface::m_ReadPacket()
         int bytesRead = m_SerialPort.readBytes((uint8_t*)(rxBuffer), sizeof(rxBuffer));
         memcpy(&rxPacket, rxBuffer, sizeof(rxPacket));
 
-        PrintRawPacket(rxBuffer, PACKET_SIZE);
+        //PrintRawPacket(rxBuffer, PACKET_SIZE);
 
         if (rxPacket.header == PACKET_HEADER && rxPacket.packetID == ENCODER_PACKET_ID) // Encoder packet
         {
             m_SerialPort.writeChar(PACKET_ACK);
             std::lock_guard<std::mutex> lock(m_Mutex);
-            memcpy(&m_LatestEncoderPacket, rxBuffer, sizeof(m_LatestEncoderPacket));
-            m_EncoderDataReady = true;
 
-            EncoderDataPacket* packet = new EncoderDataPacket;
-            memcpy(packet, &m_LatestEncoderPacket, sizeof(EncoderDataPacket));
-            dispatchPacketEvent(packet, SERIAL_ENCODER_EVENT);
+            memcpy(&m_LatestEncoderPacket, rxBuffer, sizeof(m_LatestEncoderPacket));
+            uint16_t checksum = m_calculateChecksum((uint8_t*)&m_LatestEncoderPacket, sizeof(EncoderDataPacket));
+            
+            if (m_LatestEncoderPacket.Checksum == checksum)
+            {
+                m_EncoderDataReady = true;
+                EncoderDataPacket* packet = new EncoderDataPacket;
+                memcpy(packet, &m_LatestEncoderPacket, sizeof(EncoderDataPacket));
+                dispatchPacketEvent(packet, SERIAL_ENCODER_EVENT);            
+            }
+            else
+            {
+                printf("SERIAL ERROR: Encoder packet checksum mismatch\n");
+            }
         }
 
-        else if (rxPacket.header == PACKET_HEADER && rxPacket.packetID == RANGE_PACKET_ID) // Encoder packet
+        else if (rxPacket.header == PACKET_HEADER && rxPacket.packetID == LANDMARK_PACKET_ID) // Encoder packet
         {
             m_SerialPort.writeChar(PACKET_ACK);
             std::lock_guard<std::mutex> lock(m_Mutex);
-            memcpy(&m_LatestAnchorPacket, rxBuffer, sizeof(m_LatestAnchorPacket));
-            m_RangeDataReady = true;
 
-            AnchorRangePacket* packet = new AnchorRangePacket;
-            memcpy(packet, &m_LatestAnchorPacket, sizeof(AnchorRangePacket));
-            dispatchPacketEvent(packet, SERIAL_LANDMARK_EVENT);
+            memcpy(&m_LatestAnchorPacket, rxBuffer, sizeof(m_LatestAnchorPacket));
+            uint16_t checksum = m_calculateChecksum((uint8_t*)&m_LatestAnchorPacket, sizeof(LandmarkPacket));
+
+            if (m_LatestAnchorPacket.Checksum == checksum)
+            {
+                m_RangeDataReady = true;
+                LandmarkPacket* packet = new LandmarkPacket;
+                memcpy(packet, &m_LatestAnchorPacket, sizeof(LandmarkPacket));
+                dispatchPacketEvent(packet, SERIAL_LANDMARK_EVENT);            
+            }
+            else
+            {
+                printf("SERIAL ERROR: Encoder packet checksum mismatch\n");
+            }
         }
 
         else if (rxPacket.header == PACKET_HEADER && rxPacket.packetID == STATUS_PACKET_ID) // Encoder packet
         {
             m_SerialPort.writeChar(PACKET_ACK);
             std::lock_guard<std::mutex> lock(m_Mutex);
-            memcpy(&m_LatestStatusPacket, rxBuffer, sizeof(m_LatestStatusPacket));
-            m_StatusDataReady = true;
 
-            StatusPacket* packet = new StatusPacket;
-            memcpy(packet, &m_LatestStatusPacket, sizeof(StatusPacket));
-            dispatchPacketEvent(packet, SERIAL_STATUS_EVENT);
+            memcpy(&m_LatestStatusPacket, rxBuffer, sizeof(m_LatestStatusPacket));
+            uint16_t checksum = m_calculateChecksum((uint8_t*)&m_LatestStatusPacket, sizeof(StatusPacket));
+
+            if (m_LatestStatusPacket.Checksum == checksum)
+            {
+                m_StatusDataReady = true;
+                StatusPacket* packet = new StatusPacket;
+                memcpy(packet, &m_LatestStatusPacket, sizeof(StatusPacket));
+                dispatchPacketEvent(packet, SERIAL_STATUS_EVENT);            
+            }
+            else
+            {
+                printf("SERIAL ERROR: Encoder packet checksum mismatch\n");
+            }
         }
 
         else 
@@ -134,6 +151,20 @@ void SerialInterface::dispatchPacketEvent(PacketType* packet, int eventCode)
     event.user.data1 = packet;
     event.user.data2 = NULL;
     SDL_PushEvent(&event);
+}
+
+uint16_t SerialInterface::m_calculateChecksum(uint8_t* data, size_t size) 
+{
+    uint16_t checksum = 0;
+    for (size_t i = 0; i < size; i++) 
+    {
+        // Exclude the checksum bytes (indices 3 and 4) from the checksum calculation
+        if (i != 3 && i != 4)
+        {
+            checksum += data[i];
+        }
+    }
+    return checksum;
 }
 
 // serial task that runs in a separate thread.
@@ -166,59 +197,6 @@ void SerialInterface::m_SerialTask()
     }
 }
 
-// @brief Get the latest encoder packet from the serial interface.
-// @param packet pointer to the encoder packet to be filled.
-// @return true if a new packet is available, false otherwise.
-bool SerialInterface::getPacket(EncoderDataPacket* packet)
-{
-    std::unique_lock<std::mutex> lock(m_Mutex, std::try_to_lock);
-    if (!lock.owns_lock()) return false;
-
-    *packet = m_LatestEncoderPacket;
-
-    if (m_EncoderDataReady)
-    {
-        m_EncoderDataReady = false;
-        return true;
-    }
-    else return false;
-}
-
-// @brief Get the latest anchor range packet from the serial interface.
-// @param packet pointer to the anchor range packet to be filled.
-// @return true if a new packet is available, false otherwise.
-bool SerialInterface::getPacket(AnchorRangePacket* packet)
-{
-    std::unique_lock<std::mutex> lock(m_Mutex, std::try_to_lock);
-    if (!lock.owns_lock()) return false;
-
-    *packet = m_LatestAnchorPacket;
-    
-    if (m_RangeDataReady)
-    {
-        m_RangeDataReady = false;
-        return true;
-    }
-    else return false;
-}
-
-// @brief Get the latest status packet from the serial interface.
-// @param packet pointer to the status packet to be filled.
-// @return true if a new packet is available, false otherwise.
-bool SerialInterface::getPacket(StatusPacket* packet)
-{
-    std::unique_lock<std::mutex> lock(m_Mutex, std::try_to_lock); // Try to lock the mutex
-    if (!lock.owns_lock()) return false; // Pevents main thread from blocking
-
-    *packet = m_LatestStatusPacket;
-    if (m_StatusDataReady)
-    {
-        m_StatusDataReady = false;
-        return true;
-    }
-    else return false;
-}
-
 void SerialInterface::PrintRawPacket(uint8_t* bytes, size_t numBytes)
 {
     printf("Raw Packet: ");
@@ -233,6 +211,7 @@ void SerialInterface::PrintRawPacket(uint8_t* bytes, size_t numBytes)
 // @note This function is called from the serial task thread.
 void SerialInterface::m_WritePacket()
 {
+    m_LatestCommandPacket.Checksum = m_calculateChecksum((uint8_t*)&m_LatestCommandPacket, sizeof(RobotCommandPacket));
     uint8_t* rawBytes = reinterpret_cast<uint8_t*>(&m_LatestCommandPacket);
     m_SerialPort.writeBytes(rawBytes, sizeof(m_LatestCommandPacket));
 }
@@ -242,5 +221,5 @@ void SerialInterface::SetCommandVel(float velA, float velB)
 {
     std::lock_guard<std::mutex> lock(m_Mutex);
     m_NewCommandPacket = true;
-    m_LatestCommandPacket = {PACKET_HEADER, COMMAND_PACKET_ID, velA, velB};
+    m_LatestCommandPacket = {PACKET_HEADER, COMMAND_PACKET_ID, 0x00, velA, velB};
 }
