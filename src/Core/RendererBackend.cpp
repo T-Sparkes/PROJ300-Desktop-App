@@ -25,6 +25,9 @@ RendererBackend::RendererBackend(unsigned int windowSizeX, unsigned int windowSi
 
     SDL_SetRenderVSync(m_sdlRenderer, 1);
     m_DpiScale = SDL_GetWindowDisplayScale(m_Window);
+    
+    SDL_SetLogPriorities(SDL_LOG_PRIORITY_VERBOSE);
+    SDL_LogVerbose(SDL_LOG_CATEGORY_APPLICATION, "BACKEND: Backend created");
 }
 
 /// @brief Start the new ImGui frame, windows must be called / created after this
@@ -86,9 +89,11 @@ RendererBackend::~RendererBackend()
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
     ImPlot::DestroyContext();
+    SDL_LogVerbose(SDL_LOG_CATEGORY_APPLICATION, "BACKEND: Destroyed ImGui context");
 
     SDL_DestroyRenderer(m_sdlRenderer);
     SDL_DestroyWindow(m_Window);
+    SDL_LogVerbose(SDL_LOG_CATEGORY_APPLICATION, "BACKEND: Destroyed window and renderer");
     SDL_Quit();
 }
 

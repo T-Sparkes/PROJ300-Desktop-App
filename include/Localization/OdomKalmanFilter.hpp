@@ -1,3 +1,4 @@
+#pragma once
 #include <Eigen/Dense>
 #include "ViewPortRenderable.hpp"
 
@@ -27,7 +28,8 @@ public:
     OdomKalmanFilter(Eigen::Vector3d initialState, double processNoise, double measurementNoise);
     void setAnchors(const Eigen::Vector2d& anchorA, const Eigen::Vector2d& anchorB);
     void predict(const Eigen::Vector2d &U, double dt);
-    void update(const Eigen::Vector2d& measurement, double dt);
+    void batchUpdate(const Eigen::Vector2d& measurement, double dt);
+    void updateLandmark(char landmark, Eigen::Vector2d landmarkPos, double measurement);
     void setPoseEstimate(Eigen::Vector3d initialState);
     void render() override;
 };

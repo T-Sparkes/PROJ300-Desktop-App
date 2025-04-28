@@ -15,8 +15,12 @@
 
 #define ENCODER_PACKET_ID 0x01
 #define COMMAND_PACKET_ID 0x02
-#define RANGE_PACKET_ID 0x03
+#define LANDMARK_PACKET_ID 0x03
 #define STATUS_PACKET_ID 0x04
+
+#define SERIAL_STATUS_EVENT SDL_EVENT_USER + 0x01
+#define SERIAL_LANDMARK_EVENT SDL_EVENT_USER + 0x02
+#define SERIAL_ENCODER_EVENT SDL_EVENT_USER + 0x03
 
 #pragma pack(push, 1)
 struct GenericPacket // This is a test packet.
@@ -27,43 +31,48 @@ struct GenericPacket // This is a test packet.
 #pragma pack(pop)
 
 #pragma pack(push, 1)
-struct EncoderDataPacket // This is a test packet.
+// Data packet structures
+struct EncoderDataPacket 
 {
-    uint16_t header;    // 2 Bytes
-    uint8_t packetID;   // 1 Bytes
-    float encA;         // 4 Bytes
-    float encB;         // 4 Bytes
-    float velA;         // 4 Bytes
-    float velB;         // 4 Bytes
-};                      // 19 Bytes Total
+   uint16_t header = PACKET_HEADER;
+   uint8_t packetID = ENCODER_PACKET_ID; // Encoder Data Packet ID
+   uint16_t Checksum = 0x00; // checksum placeholder
+   float encA = 0.0;
+   float encB = 0.0;
+   float velA = 0.0;
+   float velB = 0.0;
+}; // 19 Bytes Total (In theory)
 #pragma pack(pop)
 
 #pragma pack(push, 1)
 struct RobotCommandPacket // This is a test packet.
 {
-    uint16_t header;
-    uint8_t packetID;
-    float VelA;
-    float VelB;
+    uint16_t header = PACKET_HEADER;
+    uint8_t packetID = COMMAND_PACKET_ID; // Command Packet ID
+    uint16_t Checksum = 0x00; // checksum placeholder
+    float VelA = 0.0;   
+    float VelB = 0.0;
 };
 #pragma pack(pop)
 
 #pragma pack(push, 1)
-struct AnchorRangePacket 
+struct LandmarkPacket 
 {
-    uint16_t header;
-    uint8_t packetID;
-    uint8_t anchorID;
-    float range;
-    float rxPower;
+    uint16_t header = PACKET_HEADER;
+    uint8_t packetID = LANDMARK_PACKET_ID;
+    uint16_t Checksum = 0x00; // checksum placeholder
+    uint8_t LandmarkID = 0x00; // anchor ID (A or B)
+    float range = 0.0; // range in meters
+    float rxPower; // new field to store the received power
 };
 #pragma pack(pop)
 
 #pragma pack(push, 1)
 struct StatusPacket
 {
-    uint16_t header;
-    uint8_t packetID;
+    uint16_t header = PACKET_HEADER;
+    uint8_t packetID = STATUS_PACKET_ID;
+    uint16_t Checksum = 0x00; // checksum placeholder
     bool connected = false;
 };
 #pragma pack(pop)
@@ -91,13 +100,14 @@ private:
     volatile bool m_StatusDataReady = false;
 
     EncoderDataPacket m_LatestEncoderPacket;
-    AnchorRangePacket m_LatestAnchorPacket;
+    LandmarkPacket m_LatestAnchorPacket;
     RobotCommandPacket m_LatestCommandPacket;
     StatusPacket m_LatestStatusPacket;
    
     void m_ReadPacket();
     void m_SerialTask();
     void m_WritePacket();
+    uint16_t m_calculateChecksum(uint8_t* data, size_t size); 
 
 public:
     SerialInterface();
@@ -105,8 +115,8 @@ public:
     bool OpenPort(std::string portName, unsigned int baudrate, bool printDebug = true);
     bool ClosePort();
     void SetCommandVel(float velA, float velB);
-    bool getPacket(EncoderDataPacket *packet);
-    bool getPacket(AnchorRangePacket *packet);
-    bool getPacket(StatusPacket *packet);
     void PrintRawPacket(uint8_t *bytes, size_t numBytes);
+    
+    template <typename PacketType>
+    void dispatchPacketEvent(PacketType *packet, int eventCode);
 };

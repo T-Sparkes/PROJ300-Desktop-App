@@ -32,7 +32,6 @@ void Buffer<T>::addData(T newData)
     {
         dataVector.erase(dataVector.begin());
     }
-    
     dataVector.push_back(newData);
 }
 

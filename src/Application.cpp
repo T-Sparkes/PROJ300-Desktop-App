@@ -1,179 +1,228 @@
-
 #include "Application.hpp"
 
-Application& Application::GetInstance()
-{
-    static Application instance;
-    return instance;
-}
-
+// Constructor: Initializes the application, UI windows, and default settings
 Application::Application() : 
     m_WorldGrid({0, 0}, {DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE}), 
-    m_biLat(DEFAULT_ANCHOR_A_POS, DEFAULT_ANCHOR_B_POS), 
+    m_Landmarks(DEFAULT_LANDMARK_A_POS, DEFAULT_LANDMARK_B_POS), 
     m_KalmanFilter(KF_DEFAULT_POS, KF_DEFAULT_Q, KF_DEFAULT_R),
-    m_OdomKalmanFilter({0, 0, 0}, 0.25e-6, KF_DEFAULT_R)
+    m_FrameTBuffer(FPS_BUFFER_SIZE)
 {
-    m_ConfigWindow = std::make_shared<ConfigWindow>(m_WorldGrid, m_biLat, m_KalmanFilter);
+    // Initialize UI windows
     m_infoBar = std::make_shared<InfoBar>(m_RobotSerial, m_AvgFrameTime);
     m_SerialMonitor = std::make_shared<SerialMonitor>(m_RobotSerial);
     m_ControlPanel = std::make_shared<BotControlWindow>(m_RobotSerial);
+    m_GraphWindow = std::make_shared<GraphWindow>(m_FrameTBuffer, m_AvgFrameTime);
+    m_ConfigWindow = std::make_shared<ConfigWindow>(m_WorldGrid, m_Landmarks, m_KalmanFilter, m_PathController);
 
+    // Add UI windows to the rendering order
     m_UIwindows.push_back(m_ConfigWindow);
     m_UIwindows.push_back(m_SerialMonitor);
     m_UIwindows.push_back(m_ControlPanel);
     m_UIwindows.push_back(m_infoBar);
+    m_UIwindows.push_back(m_GraphWindow);
 
-    viewPort.GetCamera().setScale(DEFAULT_VIEWPORT_ZOOM);
-    m_FrameTBuffer = std::make_unique<Buffer<ImPlotPoint>>(FPS_BUFFER_SIZE);
-    m_KalmanFilter.setAnchors(DEFAULT_ANCHOR_A_POS, DEFAULT_ANCHOR_B_POS);
-    m_OdomKalmanFilter.setAnchors(DEFAULT_ANCHOR_A_POS, DEFAULT_ANCHOR_B_POS);
+    // Set default viewport zoom and Kalman filter anchors
+    m_ViewPort.GetCamera().setScale(DEFAULT_VIEWPORT_ZOOM);
+    m_KalmanFilter.setAnchors(DEFAULT_LANDMARK_A_POS, DEFAULT_LANDMARK_B_POS);
+
+    SDL_LogVerbose(SDL_LOG_CATEGORY_APPLICATION, "APP INFO: Application initialized\n");
 }
 
+// Handles SDL events and processes custom user events
 void Application::OnEvent(SDL_Event* event) 
 {
-    if (ImGui::IsKeyDown(ImGuiKey_Enter) && ImGui::IsKeyDown(ImGuiKey_LeftAlt))
+    // Handle serial status event
+    if (event->type == SDL_EVENT_USER && event->user.code == SERIAL_STATUS_EVENT)
     {
-        appState = RESTART; // Doesnt work anymore :(
+        StatusPacket statusData = *reinterpret_cast<StatusPacket*>(event->user.data1);
+        delete event->user.data1; // Free the memory allocated for the packet
+
+        m_SerialMonitor->OnNewStatusPacket(&statusData); 
+    }
+    // Handle serial landmark event
+    else if (event->type == SDL_EVENT_USER && event->user.code == SERIAL_LANDMARK_EVENT)
+    {
+        LandmarkPacket landmarkData = *reinterpret_cast<LandmarkPacket*>(event->user.data1);
+        delete event->user.data1; // Free the memory allocated for the packet
+
+        // Landmark Container processes the landmark data
+        m_Landmarks.OnNewPacket(&landmarkData);
+        m_SerialMonitor->OnNewLandmarkPacket(&landmarkData);
+    
+        // Update the Kalman filter with the corrected landmark data
+        m_KalmanFilter.updateLandmark(
+            landmarkData.LandmarkID, 
+            m_Landmarks.getLandmarkPos(landmarkData.LandmarkID), 
+            m_Landmarks.getLandmarkRange(landmarkData.LandmarkID)
+        );
+    }
+    // Handle serial encoder event
+    else if (event->type == SDL_EVENT_USER && event->user.code == SERIAL_ENCODER_EVENT)
+    {
+        EncoderDataPacket encoderData = *reinterpret_cast<EncoderDataPacket*>(event->user.data1);
+        delete event->user.data1; // Free the memory allocated for the packet
+
+        m_SerialMonitor->OnNewEncoderPacket(&encoderData);
+        m_KalmanFilter.predict({encoderData.encA, encoderData.encB}, ImGui::GetIO().DeltaTime);
+    }
+}
+
+// Main update loop for the application
+void Application::Update()
+{
+    // Handle application state changes
+    if (ImGui::IsKeyPressed(ImGuiKey_Escape))
+    {
+        appState = RESTART;
     }
 
-    if (ImGui::IsKeyDown(ImGuiKey_Escape))
-    {
-        appState = QUIT;
-    }
-
-    if (ImGui::IsKeyDown(ImGuiKey_F11))
+    // Toggle fullscreen mode
+    if (ImGui::IsKeyPressed(ImGuiKey_F11, false))
     {
         static bool bFullscreen = false;
         bFullscreen = !bFullscreen;
         SDL_SetWindowFullscreen(RendererBackend::GetInstance().GetSdlWindow(), bFullscreen);
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "APP INFO: Fullscreen: %s\n", bFullscreen ? "Enabled" : "Disabled");
     }
-}   
 
-void Application::Update()
-{
-    // Get data from robot
-    //StatusPacket statusData;
-    //AnchorRangePacket rangeData;
-    //EncoderDataPacket encoderData;
-
-    //m_RobotSerial.getPacket(&statusData);
-    //m_RobotSerial.getPacket(&rangeData);
-    //m_RobotSerial.getPacket(&encoderData);
-//
-    //// Temp odom stuff
-    //m_Odom.update(encoderData.encA, encoderData.encB);
-    Eigen::Vector2d mousePosWorld = viewPort.GetCamera().transform.inverse() * ViewPort::GetInstance().GetViewPortMousePos();
-//
-    //Eigen::Vector2d wheelVels = wheelVelFromGoal(
-    //    m_Odom.getState().x(), 
-    //    m_Odom.getState().y(), 
-    //    m_Odom.getState().z(), 
-    //    mousePosWorld.x(), 
-    //    mousePosWorld.y()
-    //); // Temp, do a better job of this
-//
-    //m_RobotSerial.SetCommandVel((float)wheelVels.x(), (float)wheelVels.y());
-
-    // Calculate horizontal range if anchor is 75cm above the ground
-    //static float correctedRange = sqrt(pow(m_SerialMonitor->AncPacket.range, 2) - pow(0.75f, 2));
-    //correctedRange = std::max(m_SerialMonitor->AncPacket.range, 0.0f); // Clamp to 0
-    //correctedRange = std::min(m_SerialMonitor->AncPacket.range, 10.0f); // Clamp to 10m
-
-    static Eigen::Vector2d goal1 = {-1, -1};
-    static Eigen::Vector2d goal2 = {-0.6, -1.5};
-    static Eigen::Vector2d goal3 = {0.2, -1};
-    static Eigen::Vector2d currentGoal = goal1;
-
-    if ((m_OdomKalmanFilter.x.head(2) - currentGoal).norm() < 0.1)
+    // Toggle VSync
+    if (ImGui::IsKeyPressed(ImGuiKey_F10, false))
     {
-        if (currentGoal == goal1) currentGoal = goal2;
-        else if (currentGoal == goal2) currentGoal = goal3;
-        else if (currentGoal == goal3) currentGoal = goal1;         
+        static bool bVsync = true;
+        bVsync = !bVsync;
+        SDL_SetRenderVSync(RendererBackend::GetInstance().GetSdlRenderer(), bVsync);
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "APP INFO: VSync: %s\n", bVsync ? "Enabled" : "Disabled");
+    }
+
+    // Handle viewport input (camera and interaction)
+    m_HandleViewportInput();
+
+    // Update robot control logic
+    Eigen::Vector2d mousePosWorld = m_ViewPort.GetCamera().transform.inverse() * m_ViewPort.GetViewPortMousePos();
+    static Eigen::Vector2d currentGoal = {0, -0.5}; 
+    static bool bStopped = false;
+
+    // Check if the robot has reached the current goal
+    if ((m_KalmanFilter.x.head(2) - currentGoal).norm() < 0.05)
+    {
+        currentGoal = m_PathController.getNextWaypoint();    
+    }
+
+    // Toggle robot movement
+    if (ImGui::IsKeyPressed(ImGuiKey_Space, false))
+    {
+        bStopped = !bStopped;
+    }
+
+    // Update robot serial commands
+    static Uint64 lastControl = SDL_GetTicks();
+    if (((SDL_GetTicks() - lastControl) > 1000 / CONTROL_FREQ_HZ) && !bStopped)
+    {
+        if (m_ControlPanel->controlMode == WAYPOINT)
+        {
+            Eigen::Vector2d wheelVels = m_PathController.wheelVelFromGoal(m_KalmanFilter.x, currentGoal);
+            m_RobotSerial.SetCommandVel(static_cast<float>(wheelVels[0]), static_cast<float>(wheelVels[1]));
+        }
+        lastControl = SDL_GetTicks();
     }
     
-    m_OdomKalmanFilter.predict({m_SerialMonitor->EncPacket.encA, m_SerialMonitor->EncPacket.encB}, ImGui::GetIO().DeltaTime);
-
-    // Update bilateration visualisation
-    if (m_SerialMonitor->AncPacket.anchorID == 'A' && m_SerialMonitor->AncPacket.range < 1e6)
-    {   
-        m_biLat.updateRange(m_SerialMonitor->AncPacket.range * 0.75f + 0.375f, m_biLat.rangeB);
-    }
-
-    else if (m_SerialMonitor->AncPacket.anchorID == 'B' && m_SerialMonitor->AncPacket.range < 1e6)
+    else if (bStopped)
     {
-        m_biLat.updateRange(m_biLat.rangeA, m_SerialMonitor->AncPacket.range);
+        m_RobotSerial.SetCommandVel(0, 0);
     }
 
-    // Update Kalman filter
-    m_KalmanFilter.predict({0, 0}, 0.1);
-    m_KalmanFilter.update({m_biLat.getAnchorRange('A') , m_biLat.getAnchorRange('B')}, 0.1);
+    // Update graphs with Kalman filter data
+    static Uint64 lastGraphSample = SDL_GetTicks();
+    if ((SDL_GetTicks() - lastGraphSample) > 1000 / GRAPH_FREQ_HZ)
+    {
+        double kRangeA = (m_KalmanFilter.x.head(2) - m_Landmarks.getLandmarkPos('A')).norm();
+        double kRangeB = (m_KalmanFilter.x.head(2) - m_Landmarks.getLandmarkPos('B')).norm();
 
-    m_OdomKalmanFilter.setAnchors(m_biLat.getAnchorPos('A'), m_biLat.getAnchorPos('B'));
-    m_OdomKalmanFilter.update({m_biLat.getAnchorRange('A') , m_biLat.getAnchorRange('B')}, ImGui::GetIO().DeltaTime);
+        m_GraphWindow->addRangeData({m_Landmarks.getLandmarkRange('A'), m_Landmarks.getLandmarkRange('B')}, {kRangeA, kRangeB});
+        m_GraphWindow->addKalmanData(m_KalmanFilter.K, m_KalmanFilter.P);
 
-    Eigen::Vector2d wheelVels = wheelVelFromGoal(m_OdomKalmanFilter.x.x(), m_OdomKalmanFilter.x.y(), m_OdomKalmanFilter.x.z(), currentGoal.x(), currentGoal.y());
-    //m_RobotSerial.SetCommandVel(wheelVels[0], wheelVels[1]);
+        m_CalcFrameTime();
+        lastGraphSample = SDL_GetTicks();
+    }
 
-    // Update UI
-    GraphWindow();
-    ViewPortWindow();
-
+    // Update all UI windows
     for (auto& window : m_UIwindows)
     {
         window->OnUpdate();
     }
-
-    // Self explanatory really
-    CalcFrameTime();
 }
 
-void Application::ViewPortWindow()
+// Handles viewport input for camera controls and waypoint editing
+void Application::m_HandleViewportInput()
 {
-    viewPort.ViewPortBegin();
+    m_ViewPort.ViewPortBegin();
     {
-        Eigen::Vector2d mousePosWorld = viewPort.GetCamera().transform.inverse() * ViewPort::GetInstance().GetViewPortMousePos();
+        Eigen::Vector2d mousePosWorld = m_ViewPort.GetCamera().transform.inverse() * m_ViewPort.GetViewPortMousePos();
 
         if (ImGui::IsWindowHovered())
         {
-            if (ImGui::IsMouseClicked(ImGuiMouseButton_Middle)) viewPort.GetCamera().setPanStart(mousePosWorld);
-            if (ImGui::IsMouseDragging(ImGuiMouseButton_Middle)) viewPort.GetCamera().panCamera(mousePosWorld);
-            if (abs(ImGui::GetIO().MouseWheel) > 0) viewPort.GetCamera().updateZoom(mousePosWorld, ImGui::GetIO().MouseWheel);
-
-            if (ImGui::IsKeyDown(ImGuiKey_LeftShift) && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+            // Camera controls
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Middle)) 
             {
-                m_OdomKalmanFilter.setPoseEstimate({mousePosWorld.x(), mousePosWorld.y(), 0});
+                m_ViewPort.GetCamera().setPanStart(mousePosWorld);
+            }
+
+            else if (ImGui::IsMouseDragging(ImGuiMouseButton_Middle)) 
+            {
+                m_ViewPort.GetCamera().panCamera(mousePosWorld);
+            }
+
+            if (abs(ImGui::GetIO().MouseWheel) > 0) 
+            {
+                m_ViewPort.GetCamera().updateZoom(mousePosWorld, ImGui::GetIO().MouseWheel);
+            }
+
+            // Kalman filter controls
+            if (ImGui::IsKeyDown(ImGuiKey_LeftShift) && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+            {
+                m_KalmanFilter.setPoseEstimate({mousePosWorld.x(), mousePosWorld.y(), 0});
+                m_KalmanFilter.P = Eigen::Matrix3d::Identity();
             }
             
+            // Waypoint editing 
+            if (ImGui::IsKeyDown(ImGuiKey_LeftShift) && ImGui::IsMouseClicked(ImGuiMouseButton_Left, true))
+            {
+                m_PathController.addWaypoint(mousePosWorld);
+            }
+
+            else if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) & ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+            {
+                m_PathController.removeWaypointNear(mousePosWorld);
+            }
+
+            // Move nearest waypoint to mouse position
+            else if (ImGui::IsKeyDown(ImGuiKey_LeftAlt) && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+            {
+                for (int i = 0; i < m_PathController.waypoints.size(); i++)
+                {
+                    if (m_PathController.isMouseOverWaypoint(m_PathController.waypoints[i]))
+                    {
+                        m_PathController.moveWaypoint(i, mousePosWorld);
+                        break;
+                    }
+                }
+            }
         }
     }
-    viewPort.ViewPortEnd();
+    m_ViewPort.ViewPortEnd();
 }
 
-void Application::GraphWindow()
-{
-    ImGui::Begin("Graphs");
-    {
-        if (ImGui::CollapsingHeader("Frametime Graph##Header", ImGuiTreeNodeFlags_DefaultOpen) && ImPlot::BeginPlot("Frametime##graph")) 
-        {
-            ImPlot::SetupAxes("Time (s)", "Frametime (ms)", ImPlotAxisFlags_AutoFit);
-            ImPlot::SetupAxisLimits(ImAxis_Y1, m_AvgFrameTime - 10.0f, m_AvgFrameTime + 10.0f, ImPlotCond_Always);
-            ImPlot::PlotLine("##fpsline", &m_FrameTBuffer->data()[0][0], &m_FrameTBuffer->data()[0][1], (int)m_FrameTBuffer->size(), 0, 0, sizeof(m_FrameTBuffer->data()[0]));
-            ImPlot::EndPlot();
-        }
-    }
-    ImGui::End();
-}
-
-void Application::CalcFrameTime()
+// Calculates the average frame time for performance monitoring
+void Application::m_CalcFrameTime()
 {
     m_AvgFrameTime = 0;
-    m_FrameTBuffer->addData({(float)SDL_GetTicks() / 1000.0f, ImGui::GetIO().DeltaTime * 1000.0f});
+    m_FrameTBuffer.addData({(float)SDL_GetTicks() / 1000.0f, ImGui::GetIO().DeltaTime * 1000.0f});
     
-    for (int i = 0; i < m_FrameTBuffer->size(); i++)
+    for (int i = 0; i < m_FrameTBuffer.size(); i++)
     {
-        m_AvgFrameTime += m_FrameTBuffer->data()[i][1];
+        m_AvgFrameTime += m_FrameTBuffer.data()[i][1];
     }
-    m_AvgFrameTime /= m_FrameTBuffer->size();
+    m_AvgFrameTime /= m_FrameTBuffer.size();
 }
 
 

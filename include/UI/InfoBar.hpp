@@ -52,7 +52,7 @@ inline void InfoBar::OnUpdate()
 
         ImGui::SameLine();
         static StatusPacket status;
-        m_SerialComm.getPacket(&status);
+        //m_SerialComm.getPacket(&status);
 
         if (status.connected)
         {

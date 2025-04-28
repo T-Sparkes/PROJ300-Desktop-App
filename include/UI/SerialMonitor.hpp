@@ -1,6 +1,7 @@
 #include "imgui.h"
 #include "SerialInterface.hpp"
 #include "UI/UIwindow.hpp"
+#include <deque>
 
 #define SERIAL_LINE_SIZE_BYTES 128
 #define SERIAL_HISTORY_SIZE_LINES 64
@@ -9,12 +10,17 @@
 class SerialMonitor : public UIwindow
 {
 public:
+
+    bool newEncoderPacket = false;
+    bool newLandmarkPacket = false;
+    bool newStatPacket = false; 
+
     EncoderDataPacket EncPacket;
-    AnchorRangePacket AncPacket;
+    LandmarkPacket AncPacket;
     StatusPacket statPacket;
 
     int baudInput = DEFAULT_BAUDRATE;
-    std::vector<std::string> historyBuffer; // This is gross, i might fix it later
+    std::deque<std::string> historyBuffer; // This is gross, i might fix it later
 
     SerialInterface& serialCom;
     std::vector<std::string> availablePorts;
@@ -38,6 +44,24 @@ public:
                 serialCom.ClosePort();
             }
         }
+    }
+
+    void OnNewStatusPacket(StatusPacket* packet)
+    {
+        statPacket = *packet;
+        newStatPacket = true;
+    }
+
+    void OnNewLandmarkPacket(LandmarkPacket* packet)
+    {
+        AncPacket = *packet;
+        newLandmarkPacket = true;
+    }
+
+    void OnNewEncoderPacket(EncoderDataPacket* packet)
+    {
+        EncPacket = *packet;
+        newEncoderPacket = true;
     }
 
     void OnUpdate() override
@@ -86,7 +110,7 @@ public:
 
             ImGui::Separator();
 
-            if (serialCom.getPacket(&EncPacket) && encEnable)
+            if (newEncoderPacket && encEnable)
             {
                 static char lineBuffer[SERIAL_LINE_SIZE_BYTES];
                 sprintf_s(
@@ -100,11 +124,11 @@ public:
                     EncPacket.velA, 
                     EncPacket.velB
                 );
-
                 historyBuffer.push_back(lineBuffer);
+                newEncoderPacket = false;
             }
 
-            if (serialCom.getPacket(&AncPacket) && ancEnable)
+            if (newLandmarkPacket && ancEnable)
             {
                 static char lineBuffer[SERIAL_LINE_SIZE_BYTES];
                 sprintf_s(
@@ -113,15 +137,15 @@ public:
                     "PACKET: 0x%02X | 0x%02X | %c | %.2f | %.2f |\n", 
                     AncPacket.header, 
                     AncPacket.packetID, 
-                    AncPacket.anchorID, 
+                    AncPacket.LandmarkID, 
                     AncPacket.range,
                     AncPacket.rxPower                    
                 );
-
                 historyBuffer.push_back(lineBuffer);
+                newLandmarkPacket = false;
             }
 
-            if (serialCom.getPacket(&statPacket) && statEnable)
+            if (newStatPacket && statEnable)
             {
                 static char lineBuffer[SERIAL_LINE_SIZE_BYTES];
                 sprintf_s(
@@ -134,11 +158,12 @@ public:
                 
                 );
                 historyBuffer.push_back(lineBuffer);
+                newStatPacket = false;
             }
 
             if (historyBuffer.size() > SERIAL_HISTORY_SIZE_LINES)
             {
-                historyBuffer.erase(historyBuffer.begin());
+                historyBuffer.pop_front(); // remove the oldest line
             }
 
             ImGui::BeginChild("Console", ImVec2(0, 0), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
