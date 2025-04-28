@@ -149,26 +149,26 @@ public:
     }
 
 
-    Eigen::Vector2d wheelVelFromGoal(double x, double y, double theta, double targetX, double targetY) 
+    Eigen::Vector2d wheelVelFromGoal(const Eigen::Vector3d& currentState, const Eigen::Vector2d& targetPos) 
     {
+        const double width = 0.173; // Wheel width in meters
+        const double wheelRadius = 0.03; // Wheel radius in meters
 
-        const double width = 0.173; 
+        double targetTheta = atan2(targetPos.y() - currentState.y(), targetPos.x() - currentState.x()); // Calculate the angle to the target position
+        double error = targetTheta - currentState.z(); // Calculate the error in angle
 
-        double targetTheta = atan2(targetY - y, targetX - x);
-        double error = targetTheta - theta;
-
-        while (error > M_PI) error -= 2 * M_PI;
+        while (error > M_PI) error -= 2 * M_PI; // Normalize the error to -pi, pi
         while (error < -M_PI) error += 2 * M_PI;
 
         double omega = 2 * error;
-        omega = (std::abs(omega) > 1) ? 1 * (omega / std::abs(omega)) : omega; // Limit omega to +/- 3
+        omega = (std::abs(omega) > 1) ? 1 * (omega / std::abs(omega)) : omega; // Limit omega to +/- 1 rad/s
 
         double vForwards = 0.1;  
         double vL = vForwards - (width / 2.0) * omega;
         double vR = vForwards + (width / 2.0) * omega;
 
-        double omegaL = vL / 0.03;
-        double omegaR = vR / 0.03;
+        double omegaL = vL / wheelRadius; // Calculate the angular velocity for the left wheel
+        double omegaR = vR / wheelRadius; 
 
         return {omegaL, omegaR}; 
     }
